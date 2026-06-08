@@ -15,6 +15,8 @@ type Alert = {
 };
 
 export default function CanaryDashboard() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [tempUsername, setTempUsername] = useState('');
   const [tokenName, setTokenName] = useState('');
   const [tokenMemo, setTokenMemo] = useState('');
   const [redirectUrl, setRedirectUrl] = useState('');
@@ -25,6 +27,15 @@ export default function CanaryDashboard() {
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
+    const savedUserId = localStorage.getItem('canary_user_id');
+    if (savedUserId) {
+      setUserId(savedUserId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    
     fetchAlerts();
     const interval = setInterval(() => {
       fetchAlerts();
@@ -32,11 +43,29 @@ export default function CanaryDashboard() {
       setTimeout(() => setPulse(false), 1000);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userId]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempUsername.trim()) return;
+    // Simple temporary user ID generation based on username + random string
+    const newUserId = tempUsername.trim().toLowerCase() + '-' + Math.random().toString(36).substring(7);
+    localStorage.setItem('canary_user_id', newUserId);
+    setUserId(newUserId);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('canary_user_id');
+    setUserId(null);
+    setAlerts([]);
+  };
 
   const fetchAlerts = async () => {
+    if (!userId) return;
     try {
-      const res = await fetch('/api/admin');
+      const res = await fetch('/api/admin', {
+        headers: { 'x-user-id': userId }
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setAlerts(data);
@@ -47,13 +76,17 @@ export default function CanaryDashboard() {
 
   const handleGenerateToken = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
     setLoading(true);
     setGeneratedUrl('');
 
     try {
       const res = await fetch('/api/admin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
         body: JSON.stringify({ token_name: tokenName, memo: tokenMemo, redirect_url: redirectUrl }),
       });
       const data = await res.json();
@@ -89,6 +122,43 @@ export default function CanaryDashboard() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100, damping: 15 } }
   };
+
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-[#030712] text-neutral-200 flex items-center justify-center p-6 relative overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 p-10 rounded-3xl shadow-2xl max-w-md w-full relative z-10"
+        >
+          <div className="flex justify-center mb-6">
+            <div className="bg-gradient-to-br from-cyan-400 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-cyan-500/20">
+              <Radar className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-center mb-2">Private Workspace</h2>
+          <p className="text-neutral-400 text-sm text-center mb-8">Enter a temporary username to create a private ephemeral session.</p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              type="text"
+              required
+              value={tempUsername}
+              onChange={(e) => setTempUsername(e.target.value)}
+              placeholder="Enter a username..."
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-white"
+            />
+            <button
+              type="submit"
+              className="w-full bg-white/5 border border-white/10 hover:border-cyan-500/50 text-white font-semibold py-3.5 px-4 rounded-xl transition-all hover:bg-cyan-500/10"
+            >
+              Enter Workspace
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#030712] text-neutral-200 font-sans selection:bg-cyan-500/30 overflow-hidden relative">
@@ -129,20 +199,25 @@ export default function CanaryDashboard() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
-                <p className="text-emerald-500/90 text-sm font-medium uppercase tracking-widest">System Online</p>
+                <p className="text-emerald-500/90 text-sm font-medium uppercase tracking-widest">
+                  System Online &bull; <span className="text-neutral-400 ml-1 truncate max-w-[150px] inline-block align-bottom">{userId.split('-')[0]}</span>
+                </p>
               </div>
             </div>
           </div>
           
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full shadow-inner"
-          >
-            <Activity className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-medium text-neutral-300">
-              Monitoring <span className="text-white font-bold">{alerts.length}</span> Triggers
-            </span>
-          </motion.div>
+          <div className="flex items-center gap-4">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full shadow-inner"
+            >
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm font-medium text-neutral-300">
+                Monitoring <span className="text-white font-bold">{alerts.length}</span> Triggers
+              </span>
+            </motion.div>
+            <button onClick={handleLogout} className="text-sm text-neutral-500 hover:text-white transition-colors">Logout</button>
+          </div>
         </motion.header>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-10">

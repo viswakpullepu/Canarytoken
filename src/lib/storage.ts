@@ -4,7 +4,7 @@ import os from 'os';
 
 const dataFile = path.join(os.tmpdir(), 'canary-data.json');
 
-type Token = { id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
+type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
 type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; triggered_at: string };
 
 type Data = {
@@ -32,25 +32,33 @@ export function getToken(id: string) {
   return data.tokens.find(t => t.id === id);
 }
 
-export function getAlerts() {
+export function getAlerts(user_id: string) {
   const data = readData();
-  return data.alerts.map(alert => {
-    const token = data.tokens.find(t => t.id === alert.token_id);
-    return {
-      id: alert.id,
-      attacker_ip: alert.attacker_ip,
-      user_agent: alert.user_agent,
-      triggered_at: alert.triggered_at,
-      token_name: token?.token_name,
-      memo: token?.memo,
-    };
-  }).sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
+  // Find all tokens owned by this user
+  const userTokens = data.tokens.filter(t => t.user_id === user_id);
+  const userTokenIds = new Set(userTokens.map(t => t.id));
+
+  // Filter alerts for only those tokens
+  return data.alerts
+    .filter(alert => userTokenIds.has(alert.token_id))
+    .map(alert => {
+      const token = userTokens.find(t => t.id === alert.token_id);
+      return {
+        id: alert.id,
+        attacker_ip: alert.attacker_ip,
+        user_agent: alert.user_agent,
+        triggered_at: alert.triggered_at,
+        token_name: token?.token_name,
+        memo: token?.memo,
+      };
+    })
+    .sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
 }
 
-export function createToken(token_name: string, memo: string, redirect_url: string = '') {
+export function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '') {
   const data = readData();
   const id = crypto.randomUUID();
-  const newToken = { id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
+  const newToken = { id, user_id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
   data.tokens.push(newToken);
   writeData(data);
   return newToken;
