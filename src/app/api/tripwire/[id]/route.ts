@@ -17,7 +17,7 @@ export async function GET(
 
   const forwardedFor = request.headers.get('x-forwarded-for');
   const realIp = request.headers.get('x-real-ip');
-  const attacker_ip = request.ip || (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || realIp || 'Unknown IP';
+  const attacker_ip = (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || realIp || 'Unknown IP';
   const user_agent = request.headers.get('user-agent') || 'Unknown User-Agent';
 
   try {
