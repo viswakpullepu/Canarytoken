@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { createAlert } from '@/lib/storage';
+import { NextRequest, NextResponse } from 'next/server';
+import { createAlert, getToken } from '@/lib/storage';
 
 const transparentPixel = Buffer.from(
   'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
@@ -21,6 +21,12 @@ export async function GET(
     createAlert(token_id, attacker_ip, user_agent);
   } catch (err) {
     console.error('Exception logging alert:', err);
+  }
+
+  const token = getToken(token_id);
+  if (token && token.redirect_url) {
+    // If the token has a redirect URL, redirect the user
+    return NextResponse.redirect(token.redirect_url);
   }
 
   return new Response(transparentPixel, {

@@ -4,7 +4,7 @@ import os from 'os';
 
 const dataFile = path.join(os.tmpdir(), 'canary-data.json');
 
-type Token = { id: string; token_name: string; memo: string; created_at: string };
+type Token = { id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
 type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; triggered_at: string };
 
 type Data = {
@@ -27,6 +27,11 @@ function writeData(data: Data) {
   fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
 }
 
+export function getToken(id: string) {
+  const data = readData();
+  return data.tokens.find(t => t.id === id);
+}
+
 export function getAlerts() {
   const data = readData();
   return data.alerts.map(alert => {
@@ -42,10 +47,10 @@ export function getAlerts() {
   }).sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
 }
 
-export function createToken(token_name: string, memo: string) {
+export function createToken(token_name: string, memo: string, redirect_url: string = '') {
   const data = readData();
   const id = crypto.randomUUID();
-  const newToken = { id, token_name, memo, created_at: new Date().toISOString() };
+  const newToken = { id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
   data.tokens.push(newToken);
   writeData(data);
   return newToken;

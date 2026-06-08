@@ -16,9 +16,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token_name, memo } = body;
+    const { token_name, memo, redirect_url } = body;
 
-    const newToken = createToken(token_name, memo);
+    const newToken = createToken(token_name, memo, redirect_url);
     return NextResponse.json(newToken);
   } catch (err) {
     console.error(err);

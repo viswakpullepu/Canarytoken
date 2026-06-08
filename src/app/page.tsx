@@ -17,6 +17,7 @@ type Alert = {
 export default function CanaryDashboard() {
   const [tokenName, setTokenName] = useState('');
   const [tokenMemo, setTokenMemo] = useState('');
+  const [redirectUrl, setRedirectUrl] = useState('');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -53,7 +54,7 @@ export default function CanaryDashboard() {
       const res = await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_name: tokenName, memo: tokenMemo }),
+        body: JSON.stringify({ token_name: tokenName, memo: tokenMemo, redirect_url: redirectUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -62,6 +63,7 @@ export default function CanaryDashboard() {
       setGeneratedUrl(url);
       setTokenName('');
       setTokenMemo('');
+      setRedirectUrl('');
     } catch (err) {
       console.error('Error generating token:', err);
       alert('Failed to generate token.');
@@ -181,6 +183,17 @@ export default function CanaryDashboard() {
                     value={tokenMemo}
                     onChange={(e) => setTokenMemo(e.target.value)}
                     placeholder="e.g., S3 Bucket root directory"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Redirect URL (Optional decoy)</label>
+                  <input
+                    type="url"
+                    value={redirectUrl}
+                    onChange={(e) => setRedirectUrl(e.target.value)}
+                    placeholder="e.g., https://google.com"
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
                   />
                 </div>
