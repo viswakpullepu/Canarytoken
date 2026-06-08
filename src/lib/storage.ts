@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 import crypto from 'crypto';
 
 let redisInstance: Redis | null = null;
@@ -6,19 +6,15 @@ let redisInstance: Redis | null = null;
 function getRedis(): Redis | null {
   if (redisInstance) return redisInstance;
   
-  const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const redisUrl = process.env.REDIS_URL || process.env.KV_URL || '';
   
-  if (!redisUrl || !redisToken) {
-    console.error('Missing Redis environment variables. Check Vercel Storage settings.');
+  if (!redisUrl) {
+    console.error('Missing REDIS_URL environment variable.');
     return null;
   }
   
   try {
-    redisInstance = new Redis({
-      url: redisUrl,
-      token: redisToken,
-    });
+    redisInstance = new Redis(redisUrl);
     return redisInstance;
   } catch (e) {
     console.error('Failed to initialize Redis client:', e);
@@ -34,7 +30,8 @@ export async function getToken(id: string): Promise<Token | null> {
   if (!redis) return null;
   
   try {
-    return await redis.get<Token>(`token:${id}`);
+    const data = await redis.get(`token:${id}`);
+    return data ? JSON.parse(data) : null;
   } catch (err) {
     console.error('Redis get token error:', err);
     return null;
@@ -46,8 +43,8 @@ export async function getAlerts(user_id: string): Promise<Alert[]> {
   if (!redis) return [];
   
   try {
-    const alerts = await redis.lrange<Alert>(`alerts:${user_id}`, 0, 50);
-    return alerts || [];
+    const alertsData = await redis.lrange(`alerts:${user_id}`, 0, 50);
+    return alertsData.map(a => JSON.parse(a));
   } catch (err) {
     console.error('Redis get alerts error:', err);
     return [];
@@ -59,12 +56,12 @@ export async function createToken(user_id: string, token_name: string, memo: str
   const newToken: Token = { id, user_id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
   
   const redis = getRedis();
-  if (!redis) return newToken; // Fail silently but return token for UI
+  if (!redis) return newToken; 
   
   try {
-    await redis.set(`token:${id}`, newToken);
+    await redis.set(`token:${id}`, JSON.stringify(newToken));
     await redis.set(`token_lookup:${id}`, user_id);
-    await redis.lpush(`tokens:${user_id}`, newToken);
+    await redis.lpush(`tokens:${user_id}`, JSON.stringify(newToken));
   } catch (err) {
     console.error('Redis create token error:', err);
   }
@@ -80,14 +77,14 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
   if (!redis) return newAlert;
   
   try {
-    const token = await redis.get<Token>(`token:${token_id}`);
-    if (token) {
+    const tokenStr = await redis.get(`token:${token_id}`);
+    if (tokenStr) {
+      const token: Token = JSON.parse(tokenStr);
       const user_id = token.user_id;
       newAlert.token_name = token.token_name;
       newAlert.memo = token.memo;
-      await redis.lpush(`alerts:${user_id}`, newAlert);
+      await redis.lpush(`alerts:${user_id}`, JSON.stringify(newAlert));
       
-      // Keep only the 50 most recent alerts per user to save space
       await redis.ltrim(`alerts:${user_id}`, 0, 49);
     }
   } catch (err) {
