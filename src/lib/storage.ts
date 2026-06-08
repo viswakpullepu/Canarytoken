@@ -1,8 +1,13 @@
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 
-// Initialize Redis client. This requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel.
-const redis = Redis.fromEnv();
+const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+
+const redis = new Redis({
+  url: redisUrl,
+  token: redisToken,
+});
 
 export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
 export type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; location: string; triggered_at: string; token_name?: string; memo?: string };
