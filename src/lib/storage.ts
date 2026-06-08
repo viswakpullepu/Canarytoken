@@ -39,6 +39,10 @@ export type Alert = {
   language?: string;
   device_model?: string;
   os_platform?: string;
+  gpu_renderer?: string;
+  battery_level?: string;
+  connection_type?: string;
+  touch_points?: number;
 };
 
 export async function getToken(id: string): Promise<Token | null> {

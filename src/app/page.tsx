@@ -20,6 +20,10 @@ type Alert = {
   language?: string;
   device_model?: string;
   os_platform?: string;
+  gpu_renderer?: string;
+  battery_level?: string;
+  connection_type?: string;
+  touch_points?: number;
 };
 
 export default function CanaryDashboard() {
@@ -477,11 +481,23 @@ export default function CanaryDashboard() {
                                   {alert.device_model && alert.device_model !== 'Unknown' && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Device:</span> <span className="font-mono text-emerald-200">{alert.device_model}</span></div>
                                   )}
+                                  {alert.gpu_renderer && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">GPU:</span> <span className="font-mono text-emerald-200" title={alert.gpu_renderer}>{alert.gpu_renderer.split('Direct3D')[0].split('vs_')[0].substring(0, 20)}{alert.gpu_renderer.length > 20 ? '...' : ''}</span></div>
+                                  )}
                                   {alert.hardware_concurrency && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">CPU Cores:</span> <span className="font-mono text-emerald-200">{alert.hardware_concurrency}</span></div>
                                   )}
                                   {alert.device_memory && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">RAM:</span> <span className="font-mono text-emerald-200">{alert.device_memory}GB+</span></div>
+                                  )}
+                                  {alert.battery_level && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Battery:</span> <span className="font-mono text-emerald-200">{alert.battery_level}</span></div>
+                                  )}
+                                  {alert.connection_type && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Network:</span> <span className="font-mono text-emerald-200 uppercase">{alert.connection_type}</span></div>
+                                  )}
+                                  {alert.touch_points !== undefined && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Touch:</span> <span className="font-mono text-emerald-200">{alert.touch_points > 0 ? `${alert.touch_points} Points` : 'No'}</span></div>
                                   )}
                                   {alert.timezone && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Timezone:</span> <span className="font-mono text-emerald-200">{alert.timezone}</span></div>

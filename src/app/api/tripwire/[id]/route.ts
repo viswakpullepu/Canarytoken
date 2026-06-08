@@ -62,6 +62,10 @@ export async function GET(
           try {
             let device_model = '';
             let os_platform = navigator.platform || '';
+            let gpu_renderer = '';
+            let battery_level = '';
+            let connection_type = '';
+            let touch_points = navigator.maxTouchPoints || 0;
             
             // Attempt to get exact device model on modern browsers (Android/Chrome)
             if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
@@ -72,6 +76,31 @@ export async function GET(
               } catch(e) {}
             }
 
+            // Extract GPU
+            try {
+              const canvas = document.createElement('canvas');
+              const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+              if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) gpu_renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+              }
+            } catch(e) {}
+
+            // Extract Battery
+            try {
+              if (navigator.getBattery) {
+                const battery = await navigator.getBattery();
+                battery_level = Math.round(battery.level * 100) + '% ' + (battery.charging ? '(Charging)' : '');
+              }
+            } catch(e) {}
+
+            // Extract Connection
+            try {
+              if (navigator.connection && navigator.connection.effectiveType) {
+                connection_type = navigator.connection.effectiveType;
+              }
+            } catch(e) {}
+
             const details = {
               hardware_concurrency: navigator.hardwareConcurrency,
               device_memory: navigator.deviceMemory,
@@ -79,7 +108,11 @@ export async function GET(
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               screen_resolution: window.screen.width + 'x' + window.screen.height,
               device_model: device_model,
-              os_platform: os_platform
+              os_platform: os_platform,
+              gpu_renderer: gpu_renderer,
+              battery_level: battery_level,
+              connection_type: connection_type,
+              touch_points: touch_points
             };
             
             await fetch('/api/tripwire/fingerprint', {
