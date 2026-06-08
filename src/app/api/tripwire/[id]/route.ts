@@ -22,7 +22,13 @@ export async function GET(
   
   const city = request.headers.get('x-vercel-ip-city') || '';
   const country = request.headers.get('x-vercel-ip-country') || '';
-  const location = city && country ? `${city}, ${country}` : (country || 'Unknown Location');
+  const lat = request.headers.get('x-vercel-ip-latitude') || '';
+  const lon = request.headers.get('x-vercel-ip-longitude') || '';
+  
+  let location = city && country ? `${city}, ${country}` : (country || 'Unknown Location');
+  if (lat && lon) {
+    location += ` (${lat}, ${lon})`;
+  }
 
   try {
     await createAlert(token_id, attacker_ip, user_agent, location);

@@ -436,7 +436,9 @@ export default function CanaryDashboard() {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-1">Location</p>
-                                <p className="text-sm font-medium text-amber-200 truncate">{alert.location}</p>
+                                <p className="text-xs font-medium text-amber-200 break-words leading-relaxed" title={alert.location}>
+                                  {alert.location}
+                                </p>
                               </div>
                             </div>
                             <div className="bg-neutral-900/80 rounded-xl p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
