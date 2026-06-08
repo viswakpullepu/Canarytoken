@@ -38,8 +38,19 @@ export async function GET(
 
   const token = await getToken(token_id);
   if (token && token.redirect_url) {
-    // If the token has a redirect URL, redirect the user
-    return NextResponse.redirect(token.redirect_url);
+    let finalUrl = token.redirect_url;
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://' + finalUrl;
+    }
+    
+    try {
+      // Validate URL parse
+      new URL(finalUrl);
+      return NextResponse.redirect(finalUrl, 302);
+    } catch (e) {
+      console.error('Invalid redirect URL:', finalUrl);
+      // Fallback to transparent pixel if URL is completely invalid
+    }
   }
 
   return new Response(transparentPixel, {
