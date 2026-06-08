@@ -60,12 +60,26 @@ export async function GET(
       <script>
         (async function() {
           try {
+            let device_model = '';
+            let os_platform = navigator.platform || '';
+            
+            // Attempt to get exact device model on modern browsers (Android/Chrome)
+            if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+              try {
+                const entropy = await navigator.userAgentData.getHighEntropyValues(['model', 'platform']);
+                device_model = entropy.model || '';
+                os_platform = entropy.platform || os_platform;
+              } catch(e) {}
+            }
+
             const details = {
               hardware_concurrency: navigator.hardwareConcurrency,
               device_memory: navigator.deviceMemory,
               language: navigator.language,
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              screen_resolution: window.screen.width + 'x' + window.screen.height
+              screen_resolution: window.screen.width + 'x' + window.screen.height,
+              device_model: device_model,
+              os_platform: os_platform
             };
             
             await fetch('/api/tripwire/fingerprint', {

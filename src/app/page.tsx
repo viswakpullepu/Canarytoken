@@ -18,6 +18,8 @@ type Alert = {
   screen_resolution?: string;
   timezone?: string;
   language?: string;
+  device_model?: string;
+  os_platform?: string;
 };
 
 export default function CanaryDashboard() {
@@ -468,6 +470,12 @@ export default function CanaryDashboard() {
                               <div className="flex flex-wrap gap-4 text-xs">
                                 {alert.screen_resolution && (
                                   <div><span className="text-neutral-500">Screen:</span> <span className="font-mono text-emerald-200">{alert.screen_resolution}</span></div>
+                                )}
+                                {alert.os_platform && (
+                                  <div><span className="text-neutral-500">OS:</span> <span className="font-mono text-emerald-200">{alert.os_platform}</span></div>
+                                )}
+                                {alert.device_model && alert.device_model !== 'Unknown' && (
+                                  <div><span className="text-neutral-500">Device:</span> <span className="font-mono text-emerald-200">{alert.device_model}</span></div>
                                 )}
                                 {alert.hardware_concurrency && (
                                   <div><span className="text-neutral-500">CPU Cores:</span> <span className="font-mono text-emerald-200">{alert.hardware_concurrency}</span></div>

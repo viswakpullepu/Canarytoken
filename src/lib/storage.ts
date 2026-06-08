@@ -37,6 +37,8 @@ export type Alert = {
   screen_resolution?: string;
   timezone?: string;
   language?: string;
+  device_model?: string;
+  os_platform?: string;
 };
 
 export async function getToken(id: string): Promise<Token | null> {
