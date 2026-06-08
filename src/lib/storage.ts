@@ -23,7 +23,21 @@ function getRedis(): Redis | null {
 }
 
 export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
-export type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; location: string; triggered_at: string; token_name?: string; memo?: string };
+export type Alert = { 
+  id: string; 
+  token_id: string; 
+  attacker_ip: string; 
+  user_agent: string; 
+  location: string; 
+  triggered_at: string; 
+  token_name?: string; 
+  memo?: string;
+  hardware_concurrency?: number;
+  device_memory?: number;
+  screen_resolution?: string;
+  timezone?: string;
+  language?: string;
+};
 
 export async function getToken(id: string): Promise<Token | null> {
   const redis = getRedis();
@@ -84,6 +98,7 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
       newAlert.token_name = token.token_name;
       newAlert.memo = token.memo;
       await redis.lpush(`alerts:${user_id}`, JSON.stringify(newAlert));
+      await redis.set(`alert_lookup:${id}`, user_id);
       
       await redis.ltrim(`alerts:${user_id}`, 0, 49);
     }
@@ -92,4 +107,29 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
   }
   
   return newAlert;
+}
+
+export async function updateAlertDetails(alert_id: string, details: Partial<Alert>): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  try {
+    const user_id = await redis.get(`alert_lookup:${alert_id}`);
+    if (!user_id) return;
+
+    // Fetch alerts for this user
+    const alertsData = await redis.lrange(`alerts:${user_id}`, 0, 50);
+    for (let i = 0; i < alertsData.length; i++) {
+      const alert: Alert = JSON.parse(alertsData[i]);
+      if (alert.id === alert_id) {
+        // Update the alert
+        const updatedAlert = { ...alert, ...details };
+        // Replace in list (LSET is 0-indexed)
+        await redis.lset(`alerts:${user_id}`, i, JSON.stringify(updatedAlert));
+        break;
+      }
+    }
+  } catch (err) {
+    console.error('Redis update alert error:', err);
+  }
 }

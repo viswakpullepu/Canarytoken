@@ -30,19 +30,67 @@ export async function GET(
     location += ` (${lat}, ${lon})`;
   }
 
+  let alertId = '';
   try {
-    await createAlert(token_id, attacker_ip, user_agent, location);
+    const alert = await createAlert(token_id, attacker_ip, user_agent, location);
+    alertId = alert.id;
   } catch (err) {
     console.error('Exception logging alert:', err);
   }
 
   const token = await getToken(token_id);
-  if (token && token.redirect_url) {
-    let finalUrl = token.redirect_url;
-    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-      finalUrl = 'https://' + finalUrl;
-    }
+  
+  const accept = request.headers.get('accept') || '';
+  const isHtmlRequest = accept.includes('text/html');
+  
+  let finalUrl = token?.redirect_url || '';
+  if (finalUrl && !finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+    finalUrl = 'https://' + finalUrl;
+  }
+
+  if (isHtmlRequest) {
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Loading...</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body style="background: #000;">
+      <script>
+        (async function() {
+          try {
+            const details = {
+              hardware_concurrency: navigator.hardwareConcurrency,
+              device_memory: navigator.deviceMemory,
+              language: navigator.language,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              screen_resolution: window.screen.width + 'x' + window.screen.height
+            };
+            
+            await fetch('/api/tripwire/fingerprint', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ alert_id: '${alertId}', details })
+            });
+          } catch(e) {}
+          
+          ${finalUrl ? `window.location.replace('${finalUrl}');` : ''}
+        })();
+      </script>
+    </body>
+    </html>
+    `;
     
+    return new Response(html, { 
+      headers: { 
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      }
+    });
+  }
+
+  if (finalUrl) {
     try {
       // Validate URL parse
       new URL(finalUrl);

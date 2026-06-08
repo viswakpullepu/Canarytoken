@@ -453,6 +453,32 @@ export default function CanaryDashboard() {
                               </div>
                             </div>
                           </div>
+                          
+                          {(alert.screen_resolution || alert.hardware_concurrency || alert.language) && (
+                            <div className="mt-3 bg-neutral-900/40 rounded-xl p-3 border border-white/5 shadow-inner">
+                              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Deep Hardware Scan
+                              </p>
+                              <div className="flex flex-wrap gap-4 text-xs">
+                                {alert.screen_resolution && (
+                                  <div><span className="text-neutral-500">Screen:</span> <span className="font-mono text-emerald-200">{alert.screen_resolution}</span></div>
+                                )}
+                                {alert.hardware_concurrency && (
+                                  <div><span className="text-neutral-500">CPU Cores:</span> <span className="font-mono text-emerald-200">{alert.hardware_concurrency}</span></div>
+                                )}
+                                {alert.device_memory && (
+                                  <div><span className="text-neutral-500">RAM:</span> <span className="font-mono text-emerald-200">{alert.device_memory}GB+</span></div>
+                                )}
+                                {alert.timezone && (
+                                  <div><span className="text-neutral-500">Timezone:</span> <span className="font-mono text-emerald-200">{alert.timezone}</span></div>
+                                )}
+                                {alert.language && (
+                                  <div><span className="text-neutral-500">Lang:</span> <span className="font-mono text-emerald-200">{alert.language}</span></div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </motion.div>
                       ))}
                     </AnimatePresence>
