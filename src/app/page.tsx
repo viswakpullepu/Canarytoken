@@ -380,18 +380,14 @@ export default function CanaryDashboard() {
                     </div>
                   </motion.div>
                 ) : (
-                  <motion.div 
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="space-y-4"
-                  >
+                  <div className="space-y-4">
                     <AnimatePresence>
-                      {alerts.map((alert) => (
+                      {alerts.map((alert, index) => (
                         <motion.div 
-                          key={alert.id}
-                          variants={itemVariants}
-                          layout
+                          key={alert.id || index}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
                           className="bg-black/40 border border-white/5 hover:border-red-500/30 rounded-2xl p-5 relative overflow-hidden group transition-colors duration-300 shadow-sm"
                         >
                           <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 to-rose-700 opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -448,7 +444,7 @@ export default function CanaryDashboard() {
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                  </motion.div>
+                  </div>
                 )}
               </div>
             </div>
