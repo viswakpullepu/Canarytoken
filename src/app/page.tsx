@@ -13,6 +13,11 @@ type Alert = {
   location: string;
   token_name: string;
   memo: string;
+  hardware_concurrency?: number;
+  device_memory?: number;
+  screen_resolution?: string;
+  timezone?: string;
+  language?: string;
 };
 
 export default function CanaryDashboard() {
