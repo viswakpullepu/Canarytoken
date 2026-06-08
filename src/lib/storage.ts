@@ -1,18 +1,38 @@
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 
-const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
-const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+let redisInstance: Redis | null = null;
 
-const redis = new Redis({
-  url: redisUrl,
-  token: redisToken,
-});
+function getRedis(): Redis | null {
+  if (redisInstance) return redisInstance;
+  
+  const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  
+  if (!redisUrl || !redisToken) {
+    console.error('Missing Redis environment variables. Check Vercel Storage settings.');
+    return null;
+  }
+  
+  try {
+    redisInstance = new Redis({
+      url: redisUrl,
+      token: redisToken,
+    });
+    return redisInstance;
+  } catch (e) {
+    console.error('Failed to initialize Redis client:', e);
+    return null;
+  }
+}
 
 export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
 export type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; location: string; triggered_at: string; token_name?: string; memo?: string };
 
 export async function getToken(id: string): Promise<Token | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+  
   try {
     return await redis.get<Token>(`token:${id}`);
   } catch (err) {
@@ -22,9 +42,12 @@ export async function getToken(id: string): Promise<Token | null> {
 }
 
 export async function getAlerts(user_id: string): Promise<Alert[]> {
+  const redis = getRedis();
+  if (!redis) return [];
+  
   try {
     const alerts = await redis.lrange<Alert>(`alerts:${user_id}`, 0, 50);
-    return alerts;
+    return alerts || [];
   } catch (err) {
     console.error('Redis get alerts error:', err);
     return [];
@@ -34,6 +57,9 @@ export async function getAlerts(user_id: string): Promise<Alert[]> {
 export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = ''): Promise<Token> {
   const id = crypto.randomUUID();
   const newToken: Token = { id, user_id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
+  
+  const redis = getRedis();
+  if (!redis) return newToken; // Fail silently but return token for UI
   
   try {
     await redis.set(`token:${id}`, newToken);
@@ -49,6 +75,9 @@ export async function createToken(user_id: string, token_name: string, memo: str
 export async function createAlert(token_id: string, attacker_ip: string, user_agent: string, location: string = 'Unknown Location'): Promise<Alert> {
   const id = crypto.randomUUID();
   const newAlert: Alert = { id, token_id, attacker_ip, user_agent, location, triggered_at: new Date().toISOString() };
+  
+  const redis = getRedis();
+  if (!redis) return newAlert;
   
   try {
     const token = await redis.get<Token>(`token:${token_id}`);
