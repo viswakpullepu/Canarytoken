@@ -151,21 +151,29 @@ export default function CanaryDashboard() {
           <h2 className="text-2xl font-bold text-center mb-2">Private Workspace</h2>
           <p className="text-neutral-400 text-sm text-center mb-8">Enter a temporary username to create a private ephemeral session.</p>
           
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="text"
-              required
-              value={tempUsername}
-              onChange={(e) => setTempUsername(e.target.value)}
-              placeholder="Enter a username..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-white"
-            />
-            <button
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="relative group">
+              <input
+                type="text"
+                required
+                value={tempUsername}
+                onChange={(e) => setTempUsername(e.target.value)}
+                placeholder="Enter a username..."
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-white transition-all shadow-inner group-hover:border-white/20"
+              />
+              <div className="absolute inset-0 border border-cyan-500/0 rounded-xl pointer-events-none group-focus-within:border-cyan-500/50 transition-colors duration-300"></div>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               type="submit"
-              className="w-full bg-white/5 border border-white/10 hover:border-cyan-500/50 text-white font-semibold py-3.5 px-4 rounded-xl transition-all hover:bg-cyan-500/10"
+              className="w-full relative overflow-hidden bg-white/5 border border-white/10 text-white font-bold py-4 px-4 rounded-xl transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.1)] hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] group"
             >
-              Enter Workspace
-            </button>
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-cyan-600/30 to-indigo-600/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <span className="relative flex items-center justify-center gap-2 tracking-wide">
+                Initialize Secure Session
+              </span>
+            </motion.button>
           </form>
         </motion.div>
       </div>
