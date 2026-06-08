@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createAlert } from '@/lib/storage';
 
 const transparentPixel = Buffer.from(
   'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
@@ -18,13 +18,7 @@ export async function GET(
   const user_agent = request.headers.get('user-agent') || 'Unknown User-Agent';
 
   try {
-    const { error } = await supabase
-      .from('alerts')
-      .insert([{ token_id, attacker_ip, user_agent }]);
-
-    if (error) {
-      console.error('Error logging alert:', error);
-    }
+    createAlert(token_id, attacker_ip, user_agent);
   } catch (err) {
     console.error('Exception logging alert:', err);
   }
