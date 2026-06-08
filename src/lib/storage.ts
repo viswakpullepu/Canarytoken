@@ -5,7 +5,7 @@ import os from 'os';
 const dataFile = path.join(os.tmpdir(), 'canary-data.json');
 
 type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
-type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; triggered_at: string };
+type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; location: string; triggered_at: string };
 
 type Data = {
   tokens: Token[];
@@ -47,6 +47,7 @@ export function getAlerts(user_id: string) {
         id: alert.id,
         attacker_ip: alert.attacker_ip,
         user_agent: alert.user_agent,
+        location: alert.location || 'Unknown Location',
         triggered_at: alert.triggered_at,
         token_name: token?.token_name,
         memo: token?.memo,
@@ -64,10 +65,10 @@ export function createToken(user_id: string, token_name: string, memo: string, r
   return newToken;
 }
 
-export function createAlert(token_id: string, attacker_ip: string, user_agent: string) {
+export function createAlert(token_id: string, attacker_ip: string, user_agent: string, location: string = 'Unknown Location') {
   const data = readData();
   const id = crypto.randomUUID();
-  const newAlert = { id, token_id, attacker_ip, user_agent, triggered_at: new Date().toISOString() };
+  const newAlert = { id, token_id, attacker_ip, user_agent, location, triggered_at: new Date().toISOString() };
   data.alerts.push(newAlert);
   writeData(data);
   return newAlert;

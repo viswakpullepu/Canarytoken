@@ -19,9 +19,13 @@ export async function GET(
   const realIp = request.headers.get('x-real-ip');
   const attacker_ip = (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || realIp || 'Unknown IP';
   const user_agent = request.headers.get('user-agent') || 'Unknown User-Agent';
+  
+  const city = request.headers.get('x-vercel-ip-city') || '';
+  const country = request.headers.get('x-vercel-ip-country') || '';
+  const location = city && country ? `${city}, ${country}` : (country || 'Unknown Location');
 
   try {
-    createAlert(token_id, attacker_ip, user_agent);
+    createAlert(token_id, attacker_ip, user_agent, location);
   } catch (err) {
     console.error('Exception logging alert:', err);
   }

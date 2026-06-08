@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldAlert, Plus, Copy, Check, Activity, Clock, Globe, Fingerprint, Zap, Radar } from 'lucide-react';
+import { ShieldAlert, Plus, Copy, Check, Activity, Clock, Globe, Fingerprint, Zap, Radar, MapPin } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,6 +10,7 @@ type Alert = {
   triggered_at: string;
   attacker_ip: string;
   user_agent: string;
+  location: string;
   token_name: string;
   memo: string;
 };
@@ -419,7 +420,7 @@ export default function CanaryDashboard() {
                             </div>
                           )}
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-neutral-900/80 rounded-xl p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
                               <div className="p-2 bg-rose-500/10 rounded-lg text-rose-400">
                                 <Globe className="w-4 h-4" />
@@ -427,6 +428,15 @@ export default function CanaryDashboard() {
                               <div className="min-w-0">
                                 <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-1">Source IP Address</p>
                                 <p className="text-base font-mono text-rose-200 truncate">{alert.attacker_ip}</p>
+                              </div>
+                            </div>
+                            <div className="bg-neutral-900/80 rounded-xl p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
+                              <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
+                                <MapPin className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-1">Location</p>
+                                <p className="text-sm font-medium text-amber-200 truncate">{alert.location}</p>
                               </div>
                             </div>
                             <div className="bg-neutral-900/80 rounded-xl p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
