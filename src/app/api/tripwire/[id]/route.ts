@@ -9,9 +9,10 @@ const transparentPixel = Buffer.from(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const token_id = params.id;
+  const resolvedParams = await params;
+  const token_id = resolvedParams.id;
 
   const forwardedFor = request.headers.get('x-forwarded-for');
   const attacker_ip = forwardedFor ? forwardedFor.split(',')[0].trim() : 'Unknown IP';
