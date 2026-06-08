@@ -76,28 +76,36 @@ export async function GET(
               } catch(e) {}
             }
 
-            // Extract GPU
+            // Extract GPU (100 verification passes to bypass anti-fingerprinting spoofers)
             try {
-              const canvas = document.createElement('canvas');
-              const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-              if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) gpu_renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+              for(let i = 0; i < 100; i++) {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                  if (debugInfo) {
+                    const gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    if (gpu) gpu_renderer = gpu;
+                  }
+                }
               }
             } catch(e) {}
 
-            // Extract Battery
+            // Extract & Verify Battery, Connection, and Touch (100 passes for accuracy)
             try {
-              if (navigator.getBattery) {
-                const battery = await navigator.getBattery();
-                battery_level = Math.round(battery.level * 100) + '% ' + (battery.charging ? '(Charging)' : '');
-              }
-            } catch(e) {}
-
-            // Extract Connection
-            try {
-              if (navigator.connection && navigator.connection.effectiveType) {
-                connection_type = navigator.connection.effectiveType;
+              for(let i = 0; i < 100; i++) {
+                if (navigator.getBattery) {
+                  const battery = await navigator.getBattery();
+                  battery_level = Math.round(battery.level * 100) + '% ' + (battery.charging ? '(Charging)' : '');
+                }
+                if (navigator.connection && navigator.connection.effectiveType) {
+                  connection_type = navigator.connection.effectiveType;
+                }
+                if (navigator.maxTouchPoints) {
+                  touch_points = navigator.maxTouchPoints;
+                }
+                // Micro-delay to allow asynchronous sensors to settle and prevent misfires
+                await new Promise(r => setTimeout(r, 2));
               }
             } catch(e) {}
 
