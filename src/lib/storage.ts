@@ -1,75 +1,64 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { Redis } from '@upstash/redis';
+import crypto from 'crypto';
 
-const dataFile = path.join(os.tmpdir(), 'canary-data.json');
+// Initialize Redis client. This requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel.
+const redis = Redis.fromEnv();
 
-type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
-type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; location: string; triggered_at: string };
+export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
+export type Alert = { id: string; token_id: string; attacker_ip: string; user_agent: string; location: string; triggered_at: string; token_name?: string; memo?: string };
 
-type Data = {
-  tokens: Token[];
-  alerts: Alert[];
-};
-
-function readData(): Data {
-  if (!fs.existsSync(dataFile)) {
-    return { tokens: [], alerts: [] };
-  }
+export async function getToken(id: string): Promise<Token | null> {
   try {
-    return JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
-  } catch {
-    return { tokens: [], alerts: [] };
+    return await redis.get<Token>(`token:${id}`);
+  } catch (err) {
+    console.error('Redis get token error:', err);
+    return null;
   }
 }
 
-function writeData(data: Data) {
-  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+export async function getAlerts(user_id: string): Promise<Alert[]> {
+  try {
+    const alerts = await redis.lrange<Alert>(`alerts:${user_id}`, 0, 50);
+    return alerts;
+  } catch (err) {
+    console.error('Redis get alerts error:', err);
+    return [];
+  }
 }
 
-export function getToken(id: string) {
-  const data = readData();
-  return data.tokens.find(t => t.id === id);
-}
-
-export function getAlerts(user_id: string) {
-  const data = readData();
-  // Find all tokens owned by this user
-  const userTokens = data.tokens.filter(t => t.user_id === user_id);
-  const userTokenIds = new Set(userTokens.map(t => t.id));
-
-  // Filter alerts for only those tokens
-  return data.alerts
-    .filter(alert => userTokenIds.has(alert.token_id))
-    .map(alert => {
-      const token = userTokens.find(t => t.id === alert.token_id);
-      return {
-        id: alert.id,
-        attacker_ip: alert.attacker_ip,
-        user_agent: alert.user_agent,
-        location: alert.location || 'Unknown Location',
-        triggered_at: alert.triggered_at,
-        token_name: token?.token_name,
-        memo: token?.memo,
-      };
-    })
-    .sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
-}
-
-export function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '') {
-  const data = readData();
+export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = ''): Promise<Token> {
   const id = crypto.randomUUID();
-  const newToken = { id, user_id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
-  data.tokens.push(newToken);
-  writeData(data);
+  const newToken: Token = { id, user_id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
+  
+  try {
+    await redis.set(`token:${id}`, newToken);
+    await redis.set(`token_lookup:${id}`, user_id);
+    await redis.lpush(`tokens:${user_id}`, newToken);
+  } catch (err) {
+    console.error('Redis create token error:', err);
+  }
+  
   return newToken;
 }
 
-export function createAlert(token_id: string, attacker_ip: string, user_agent: string, location: string = 'Unknown Location') {
-  const data = readData();
+export async function createAlert(token_id: string, attacker_ip: string, user_agent: string, location: string = 'Unknown Location'): Promise<Alert> {
   const id = crypto.randomUUID();
-  const newAlert = { id, token_id, attacker_ip, user_agent, location, triggered_at: new Date().toISOString() };
-  data.alerts.push(newAlert);
-  writeData(data);
+  const newAlert: Alert = { id, token_id, attacker_ip, user_agent, location, triggered_at: new Date().toISOString() };
+  
+  try {
+    const token = await redis.get<Token>(`token:${token_id}`);
+    if (token) {
+      const user_id = token.user_id;
+      newAlert.token_name = token.token_name;
+      newAlert.memo = token.memo;
+      await redis.lpush(`alerts:${user_id}`, newAlert);
+      
+      // Keep only the 50 most recent alerts per user to save space
+      await redis.ltrim(`alerts:${user_id}`, 0, 49);
+    }
+  } catch (err) {
+    console.error('Redis create alert error:', err);
+  }
+  
   return newAlert;
 }

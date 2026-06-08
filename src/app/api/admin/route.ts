@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
     const userId = request.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const alerts = getAlerts(userId);
-    return NextResponse.json(alerts.slice(0, 50));
+    const alerts = await getAlerts(userId);
+    return NextResponse.json(alerts);
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: 'Failed to fetch alerts' }, { status: 500 });
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { token_name, memo, redirect_url } = body;
 
-    const newToken = createToken(userId, token_name, memo, redirect_url);
+    const newToken = await createToken(userId, token_name, memo, redirect_url);
     return NextResponse.json(newToken);
   } catch (err) {
     console.error(err);

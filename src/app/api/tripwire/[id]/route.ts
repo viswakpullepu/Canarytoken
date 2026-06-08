@@ -25,12 +25,12 @@ export async function GET(
   const location = city && country ? `${city}, ${country}` : (country || 'Unknown Location');
 
   try {
-    createAlert(token_id, attacker_ip, user_agent, location);
+    await createAlert(token_id, attacker_ip, user_agent, location);
   } catch (err) {
     console.error('Exception logging alert:', err);
   }
 
-  const token = getToken(token_id);
+  const token = await getToken(token_id);
   if (token && token.redirect_url) {
     // If the token has a redirect URL, redirect the user
     return NextResponse.redirect(token.redirect_url);
