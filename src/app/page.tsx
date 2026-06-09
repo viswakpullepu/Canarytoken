@@ -449,16 +449,28 @@ export default function CanaryDashboard() {
                                   <p className="text-sm sm:text-base font-mono text-rose-200 truncate">{alert.attacker_ip}</p>
                                 </div>
                               </div>
-                              <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
-                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400 flex-shrink-0">
-                                  <MapPin className="w-4 h-4" />
+                              <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex flex-col gap-2 group/item hover:bg-neutral-900 transition-colors">
+                                <div className="flex items-start gap-3">
+                                  <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400 flex-shrink-0">
+                                    <MapPin className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[9px] sm:text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-1">Location</p>
+                                    <p className="text-[11px] sm:text-xs font-medium text-amber-200 break-words leading-relaxed" title={alert.location}>
+                                      {alert.location}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="text-[9px] sm:text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-1">Location</p>
-                                  <p className="text-[11px] sm:text-xs font-medium text-amber-200 break-words leading-relaxed" title={alert.location}>
-                                    {alert.location}
-                                  </p>
-                                </div>
+                                {alert.location.includes('(') && (
+                                  <a 
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alert.location.match(/\(([^)]+)\)/)?.[1] || alert.location)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-1 flex items-center justify-center gap-1.5 w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-bold py-1.5 px-2 rounded-lg transition-colors border border-amber-500/20"
+                                  >
+                                    <MapPin className="w-3 h-3" /> View on Maps
+                                  </a>
+                                )}
                               </div>
                               <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors sm:col-span-2 md:col-span-1">
                                 <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 flex-shrink-0">
