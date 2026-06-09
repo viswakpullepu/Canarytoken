@@ -19,8 +19,7 @@ export async function GET(
   const forwardedFor = request.headers.get('x-forwarded-for');
   const realIp = request.headers.get('x-real-ip');
   
-  const attacker_ip = request.ip || 
-                      (vercelForwarded ? vercelForwarded.split(',')[0].trim() : null) || 
+  const attacker_ip = (vercelForwarded ? vercelForwarded.split(',')[0].trim() : null) || 
                       (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || 
                       realIp || 
                       'Unknown IP';
