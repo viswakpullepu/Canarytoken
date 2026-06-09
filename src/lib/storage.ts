@@ -22,7 +22,7 @@ function getRedis(): Redis | null {
   }
 }
 
-export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; created_at: string };
+export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; payload_type?: 'invisible' | 'redirect' | 'fake_login'; created_at: string };
 export type Alert = { 
   id: string; 
   token_id: string; 
@@ -45,7 +45,9 @@ export type Alert = {
   touch_points?: number;
   exact_lat?: number;
   exact_lon?: number;
+  local_ip?: string;
   threat_id?: string;
+  captured_credentials?: string;
 };
 
 export async function getToken(id: string): Promise<Token | null> {
@@ -74,9 +76,9 @@ export async function getAlerts(user_id: string): Promise<Alert[]> {
   }
 }
 
-export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = ''): Promise<Token> {
+export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '', payload_type: 'invisible' | 'redirect' | 'fake_login' = 'invisible'): Promise<Token> {
   const id = crypto.randomUUID();
-  const newToken: Token = { id, user_id, token_name, memo, redirect_url, created_at: new Date().toISOString() };
+  const newToken: Token = { id, user_id, token_name, memo, redirect_url, payload_type, created_at: new Date().toISOString() };
   
   const redis = getRedis();
   if (!redis) return newToken; 
@@ -90,6 +92,35 @@ export async function createToken(user_id: string, token_name: string, memo: str
   }
   
   return newToken;
+}
+
+async function sendDiscordWebhook(alert: Alert, isTelemetry: boolean = false) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  
+  const embed = {
+    title: isTelemetry ? "🚨 Advanced Telemetry Recovered" : "🚨 Tripwire Triggered!",
+    color: isTelemetry ? 0x9c27b0 : 0xff0000,
+    fields: [
+      { name: "Token Name", value: alert.token_name || "Unknown", inline: true },
+      { name: "Threat ID", value: alert.threat_id || (isTelemetry ? "Unknown" : "Pending..."), inline: true },
+      { name: "IP Address", value: alert.attacker_ip || "Unknown", inline: true },
+      { name: "Location", value: alert.location || "Unknown", inline: true },
+      { name: "Device OS", value: alert.os_platform || "Unknown", inline: true },
+      { name: "Target Context", value: alert.memo || "None", inline: false }
+    ],
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    });
+  } catch(e) {
+    console.error('Discord webhook failed');
+  }
 }
 
 export async function createAlert(token_id: string, attacker_ip: string, user_agent: string, location: string = 'Unknown Location'): Promise<Alert> {
@@ -110,6 +141,9 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
       await redis.set(`alert_lookup:${id}`, user_id);
       
       await redis.ltrim(`alerts:${user_id}`, 0, 49);
+      
+      // Fire initial webhook
+      await sendDiscordWebhook(newAlert, false);
     }
   } catch (err) {
     console.error('Redis create alert error:', err);
@@ -135,6 +169,9 @@ export async function updateAlertDetails(alert_id: string, details: Partial<Aler
         const updatedAlert = { ...alert, ...details };
         // Replace in list (LSET is 0-indexed)
         await redis.lset(`alerts:${user_id}`, i, JSON.stringify(updatedAlert));
+        
+        // Fire secondary telemetry webhook
+        await sendDiscordWebhook(updatedAlert, true);
         break;
       }
     }

@@ -4,30 +4,8 @@ import { useState, useEffect } from 'react';
 import { ShieldAlert, Plus, Copy, Check, Activity, Clock, Globe, Fingerprint, Zap, Radar, MapPin } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-
-type Alert = {
-  id: string;
-  triggered_at: string;
-  attacker_ip: string;
-  user_agent: string;
-  location: string;
-  token_name: string;
-  memo: string;
-  hardware_concurrency?: number;
-  device_memory?: number;
-  screen_resolution?: string;
-  timezone?: string;
-  language?: string;
-  device_model?: string;
-  os_platform?: string;
-  gpu_renderer?: string;
-  battery_level?: string;
-  connection_type?: string;
-  touch_points?: number;
-  exact_lat?: number;
-  exact_lon?: number;
-  threat_id?: string;
-};
+import ThreatMap from './components/ThreatMap';
+import { Token, Alert } from '@/lib/storage';
 
 export default function CanaryDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -35,6 +13,7 @@ export default function CanaryDashboard() {
   const [tokenName, setTokenName] = useState('');
   const [tokenMemo, setTokenMemo] = useState('');
   const [redirectUrl, setRedirectUrl] = useState('');
+  const [payloadType, setPayloadType] = useState<'invisible' | 'redirect' | 'fake_login'>('invisible');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -102,7 +81,7 @@ export default function CanaryDashboard() {
           'Content-Type': 'application/json',
           'x-user-id': userId
         },
-        body: JSON.stringify({ token_name: tokenName, memo: tokenMemo, redirect_url: redirectUrl }),
+        body: JSON.stringify({ token_name: tokenName, memo: tokenMemo, redirect_url: redirectUrl, payload_type: payloadType }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -158,6 +137,29 @@ export default function CanaryDashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const downloadDocx = async () => {
+    if (!generatedUrl) return;
+    try {
+      const tokenId = generatedUrl.split('/').pop();
+      const res = await fetch('/api/v1/generate-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'confidential' })
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${tokenName || 'confidential_document'}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch(e) {
+      console.error(e);
+      alert("Failed to generate DOCX");
+    }
   };
 
   const containerVariants = {
@@ -309,7 +311,8 @@ export default function CanaryDashboard() {
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
                     />
                   </div>
-                  <div className="space-y-2">
+
+                  <div className="space-y-4 sm:space-y-6">
                     <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Deployment Location / Memo</label>
                     <input
                       type="text"
@@ -321,15 +324,30 @@ export default function CanaryDashboard() {
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Redirect URL (Optional decoy)</label>
-                    <input
-                      type="url"
-                      value={redirectUrl}
-                      onChange={(e) => setRedirectUrl(e.target.value)}
-                      placeholder="e.g., https://google.com"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
-                    />
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Payload Type</label>
+                    <select
+                      value={payloadType}
+                      onChange={(e) => setPayloadType(e.target.value as 'invisible' | 'redirect' | 'fake_login')}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm transition-all shadow-inner text-white appearance-none"
+                    >
+                      <option value="invisible">Invisible Tracker (1x1 Pixel)</option>
+                      <option value="redirect">Invisible Tracker + Redirect</option>
+                      <option value="fake_login">Fake Corporate IT Login Portal</option>
+                    </select>
                   </div>
+                  
+                  {payloadType === 'redirect' && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Redirect URL</label>
+                      <input
+                        type="url"
+                        value={redirectUrl}
+                        onChange={(e) => setRedirectUrl(e.target.value)}
+                        placeholder="e.g., https://google.com"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
+                      />
+                    </div>
+                  )}
                   
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -376,13 +394,20 @@ export default function CanaryDashboard() {
                           </code>
                           <button
                             onClick={copyToClipboard}
-                            className={`p-2 sm:p-2.5 rounded-lg transition-all duration-300 ${copied ? 'bg-emerald-500 text-white' : 'bg-white/5 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300'}`}
+                            className={`p-2 sm:p-2.5 rounded-lg transition-all duration-300 flex items-center justify-center ${copied ? 'bg-emerald-500 text-white' : 'bg-white/5 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300'}`}
                             title="Copy URL"
                           >
                             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
-                        <p className="text-[10px] sm:text-[11px] text-cyan-500/60 mt-3 font-medium">Embed this invisible tripwire in your documents, emails, or servers.</p>
+                        <button
+                          onClick={downloadDocx}
+                          className="w-full mt-3 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          Download as Decoy Word Document (.docx)
+                        </button>
+                        <p className="text-[10px] sm:text-[11px] text-cyan-500/60 mt-3 font-medium text-center">Embed this invisible tripwire in your documents, emails, or servers.</p>
                       </div>
                     </motion.div>
                   )}
@@ -395,9 +420,11 @@ export default function CanaryDashboard() {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-              className="xl:col-span-8"
+              className="xl:col-span-8 flex flex-col"
             >
-              <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl h-full flex flex-col relative min-h-[500px]">
+              <ThreatMap alerts={alerts} />
+              
+              <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl flex-1 flex flex-col relative min-h-[500px]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-4">
                   <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
                     <div className="bg-red-500/20 p-2 rounded-lg text-red-400 relative">
@@ -493,14 +520,31 @@ export default function CanaryDashboard() {
                               </div>
                             )}
 
+                            {alert.captured_credentials && (
+                              <div className="mb-4 sm:mb-5 bg-rose-500/10 border border-rose-500/30 rounded-lg p-4 max-w-full relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-2">
+                                  <span className="flex h-3 w-3 relative">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                                  </span>
+                                </div>
+                                <h4 className="text-rose-400 font-bold text-xs uppercase tracking-wider mb-2">Captured Credentials</h4>
+                                <code className="text-white bg-black/50 p-2 rounded block font-mono text-xs break-words">
+                                  {alert.captured_credentials}
+                                </code>
+                              </div>
+                            )}
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                               <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
                                 <div className="p-2 bg-rose-500/10 rounded-lg text-rose-400 flex-shrink-0">
                                   <Globe className="w-4 h-4" />
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="text-[9px] sm:text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-1">Source IP Address</p>
-                                  <p className="text-sm sm:text-base font-mono text-rose-200 truncate">{alert.attacker_ip}</p>
+                                <div>
+                                  <p className="text-[10px] text-cyan-500/50 uppercase tracking-wider font-semibold mb-0.5">IP / Location</p>
+                                  <p className="text-xs font-mono text-cyan-400 font-semibold">{alert.attacker_ip}</p>
+                                  {alert.local_ip && <p className="text-[10px] font-mono text-rose-400 font-semibold mt-0.5">LAN: {alert.local_ip}</p>}
+                                  <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{alert.location}</p>
                                 </div>
                               </div>
                               <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex flex-col gap-2 group/item hover:bg-neutral-900 transition-colors">
