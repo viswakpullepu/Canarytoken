@@ -45,6 +45,7 @@ export type Alert = {
   touch_points?: number;
   exact_lat?: number;
   exact_lon?: number;
+  threat_id?: string;
 };
 
 export async function getToken(id: string): Promise<Token | null> {

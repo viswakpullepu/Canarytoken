@@ -26,6 +26,7 @@ type Alert = {
   touch_points?: number;
   exact_lat?: number;
   exact_lon?: number;
+  threat_id?: string;
 };
 
 export default function CanaryDashboard() {
@@ -429,6 +430,13 @@ export default function CanaryDashboard() {
                                 <h3 className="text-lg sm:text-xl font-bold text-white mt-2 drop-shadow-sm truncate max-w-[250px] sm:max-w-md">
                                   {alert.token_name || 'Unknown Token'}
                                 </h3>
+                                {alert.threat_id && (
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] sm:text-[11px] font-mono text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded border border-fuchsia-500/20" title="Cryptographic Hardware Hash">
+                                      Threat ID: {alert.threat_id}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 

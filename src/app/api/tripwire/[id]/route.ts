@@ -78,6 +78,63 @@ export async function GET(
 
             let exact_lat = null;
             let exact_lon = null;
+            let threat_id = 'Unknown';
+
+            // Cryptographic Fingerprinting (Canvas + Audio + Fonts)
+            try {
+              // 1. Canvas Hash
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              ctx.textBaseline = 'top';
+              ctx.font = '14px "Arial"';
+              ctx.textBaseline = 'alphabetic';
+              ctx.fillStyle = '#f60';
+              ctx.fillRect(125,1,62,20);
+              ctx.fillStyle = '#069';
+              ctx.fillText('canary,token', 2, 15);
+              ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+              ctx.fillText('canary,token', 4, 17);
+              const canvasData = canvas.toDataURL();
+
+              // 2. Audio Hash
+              let audioData = '';
+              try {
+                const audioCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+                const oscillator = audioCtx.createOscillator();
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(10000, audioCtx.currentTime);
+                const compressor = audioCtx.createDynamicsCompressor();
+                compressor.threshold.setValueAtTime(-50, audioCtx.currentTime);
+                compressor.knee.setValueAtTime(40, audioCtx.currentTime);
+                compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+                compressor.attack.setValueAtTime(0, audioCtx.currentTime);
+                compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+                oscillator.connect(compressor);
+                compressor.connect(audioCtx.destination);
+                oscillator.start(0);
+                audioCtx.oncomplete = (e) => {
+                  const buffer = e.renderedBuffer.getChannelData(0);
+                  audioData = buffer.slice(4500, 5000).reduce((acc, val) => acc + Math.abs(val), 0).toString();
+                };
+                audioCtx.startRendering();
+              } catch(e) {}
+
+              // Simple hash function
+              const cyrb53 = function(str, seed = 0) {
+                let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+                for (let i = 0, ch; i < str.length; i++) {
+                  ch = str.charCodeAt(i);
+                  h1 = Math.imul(h1 ^ ch, 2654435761);
+                  h2 = Math.imul(h2 ^ ch, 1597334677);
+                }
+                h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+                h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+                return 4294967296 * (2097151 & h2) + (h1>>>0);
+              };
+
+              // Combine to generate unique threat ID
+              threat_id = 'T-' + cyrb53(canvasData + audioData).toString(16).toUpperCase();
+            } catch(e) {}
 
             // Extract GPU (100 verification passes to bypass anti-fingerprinting spoofers)
             try {
@@ -125,7 +182,8 @@ export async function GET(
               connection_type: connection_type,
               touch_points: touch_points,
               exact_lat: exact_lat,
-              exact_lon: exact_lon
+              exact_lon: exact_lon,
+              threat_id: threat_id
             };
             
             await fetch('/api/tripwire/fingerprint', {
