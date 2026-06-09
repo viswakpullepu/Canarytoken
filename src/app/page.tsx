@@ -125,6 +125,41 @@ export default function CanaryDashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const downloadCSV = () => {
+    if (alerts.length === 0) return;
+    
+    const headers = [
+      'Timestamp', 'Token Name', 'Threat ID', 'Attacker IP', 'Location', 'User Agent',
+      'OS', 'Device Model', 'GPU', 'CPU Cores', 'RAM (GB)', 'Battery', 'Network'
+    ];
+    
+    const rows = alerts.map(a => [
+      new Date(a.triggered_at).toISOString(),
+      `"${(a.token_name || '').replace(/"/g, '""')}"`,
+      a.threat_id || '',
+      a.attacker_ip,
+      `"${(a.location || '').replace(/"/g, '""')}"`,
+      `"${(a.user_agent || '').replace(/"/g, '""')}"`,
+      a.os_platform || '',
+      a.device_model || '',
+      `"${(a.gpu_renderer || '').replace(/"/g, '""')}"`,
+      a.hardware_concurrency || '',
+      a.device_memory || '',
+      a.battery_level || '',
+      a.connection_type || ''
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `intrusion_logs_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -373,13 +408,22 @@ export default function CanaryDashboard() {
                   </h2>
                   
                   {alerts.length > 0 && (
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-neutral-400 bg-black/40 px-3 py-1.5 rounded-full border border-white/5 self-start sm:self-auto"
-                    >
-                      <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Auto-updating
-                    </motion.div>
+                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                      <button 
+                        onClick={downloadCSV}
+                        className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/30 transition-colors"
+                      >
+                        <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export CSV
+                      </button>
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-neutral-400 bg-black/40 px-3 py-1.5 rounded-full border border-white/5"
+                      >
+                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Auto-updating
+                      </motion.div>
+                    </div>
                   )}
                 </div>
                 
