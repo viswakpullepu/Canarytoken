@@ -197,7 +197,7 @@ export async function GET(
               threat_id: threat_id
             };
             
-            await fetch('/api/tripwire/fingerprint', {
+            await fetch('/api/v1/event', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ alert_id: '${alertId}', details })

@@ -107,7 +107,7 @@ export default function CanaryDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      const url = `${window.location.origin}/api/tripwire/${data.id}`;
+      const url = `${window.location.origin}/file/${data.id}`;
       setGeneratedUrl(url);
       setTokenName('');
       setTokenMemo('');
