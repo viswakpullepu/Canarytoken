@@ -67,12 +67,18 @@ export async function GET(
             let connection_type = '';
             let touch_points = navigator.maxTouchPoints || 0;
             
-            // Attempt to get exact device model on modern browsers (Android/Chrome)
+            // Attempt to get exact device model and true OS version on modern browsers (Android/Chrome)
             if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
               try {
-                const entropy = await navigator.userAgentData.getHighEntropyValues(['model', 'platform']);
+                const entropy = await navigator.userAgentData.getHighEntropyValues(['model', 'platform', 'platformVersion']);
                 device_model = entropy.model || '';
-                os_platform = entropy.platform || os_platform;
+                if (entropy.platform) {
+                  os_platform = entropy.platform;
+                  if (entropy.platformVersion) {
+                    // On Android, platformVersion maps to the real Android version (e.g. 14.0.0)
+                    os_platform += ' ' + entropy.platformVersion;
+                  }
+                }
               } catch(e) {}
             }
 
