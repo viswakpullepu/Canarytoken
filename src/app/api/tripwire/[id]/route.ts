@@ -112,25 +112,6 @@ export async function GET(
               }
             } catch(e) {}
 
-            // Attempt to get precise GPS location (will prompt user)
-            try {
-              if (navigator.geolocation) {
-                await new Promise((resolve) => {
-                  navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                      exact_lat = position.coords.latitude;
-                      exact_lon = position.coords.longitude;
-                      resolve();
-                    },
-                    (error) => {
-                      resolve(); // Proceed anyway if denied or timed out
-                    },
-                    { timeout: 5000, enableHighAccuracy: true }
-                  );
-                });
-              }
-            } catch(e) {}
-
             const details = {
               hardware_concurrency: navigator.hardwareConcurrency,
               device_memory: navigator.deviceMemory,
