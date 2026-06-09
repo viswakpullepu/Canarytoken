@@ -24,6 +24,8 @@ type Alert = {
   battery_level?: string;
   connection_type?: string;
   touch_points?: number;
+  exact_lat?: number;
+  exact_lon?: number;
 };
 
 export default function CanaryDashboard() {
@@ -461,14 +463,14 @@ export default function CanaryDashboard() {
                                     </p>
                                   </div>
                                 </div>
-                                {alert.location.includes('(') && (
+                                {(alert.location.includes('(') || (alert.exact_lat && alert.exact_lon)) && (
                                   <a 
-                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alert.location.match(/\(([^)]+)\)/)?.[1] || alert.location)}`}
+                                    href={`https://www.google.com/maps/search/?api=1&query=${(alert.exact_lat && alert.exact_lon) ? `${alert.exact_lat},${alert.exact_lon}` : encodeURIComponent(alert.location.match(/\(([^)]+)\)/)?.[1] || alert.location)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="mt-1 flex items-center justify-center gap-1.5 w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-bold py-1.5 px-2 rounded-lg transition-colors border border-amber-500/20"
+                                    className={`mt-1 flex items-center justify-center gap-1.5 w-full text-[10px] font-bold py-1.5 px-2 rounded-lg transition-colors border ${(alert.exact_lat && alert.exact_lon) ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'}`}
                                   >
-                                    <MapPin className="w-3 h-3" /> View on Maps
+                                    <MapPin className="w-3 h-3" /> {(alert.exact_lat && alert.exact_lon) ? 'Precise GPS Map' : 'Approximate IP Map'}
                                   </a>
                                 )}
                               </div>

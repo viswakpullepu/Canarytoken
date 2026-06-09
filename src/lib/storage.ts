@@ -43,6 +43,8 @@ export type Alert = {
   battery_level?: string;
   connection_type?: string;
   touch_points?: number;
+  exact_lat?: number;
+  exact_lon?: number;
 };
 
 export async function getToken(id: string): Promise<Token | null> {

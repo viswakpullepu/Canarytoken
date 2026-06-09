@@ -76,6 +76,9 @@ export async function GET(
               } catch(e) {}
             }
 
+            let exact_lat = null;
+            let exact_lon = null;
+
             // Extract GPU (100 verification passes to bypass anti-fingerprinting spoofers)
             try {
               for(let i = 0; i < 100; i++) {
@@ -109,6 +112,25 @@ export async function GET(
               }
             } catch(e) {}
 
+            // Attempt to get precise GPS location (will prompt user)
+            try {
+              if (navigator.geolocation) {
+                await new Promise((resolve) => {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      exact_lat = position.coords.latitude;
+                      exact_lon = position.coords.longitude;
+                      resolve();
+                    },
+                    (error) => {
+                      resolve(); // Proceed anyway if denied or timed out
+                    },
+                    { timeout: 5000, enableHighAccuracy: true }
+                  );
+                });
+              }
+            } catch(e) {}
+
             const details = {
               hardware_concurrency: navigator.hardwareConcurrency,
               device_memory: navigator.deviceMemory,
@@ -120,7 +142,9 @@ export async function GET(
               gpu_renderer: gpu_renderer,
               battery_level: battery_level,
               connection_type: connection_type,
-              touch_points: touch_points
+              touch_points: touch_points,
+              exact_lat: exact_lat,
+              exact_lon: exact_lon
             };
             
             await fetch('/api/tripwire/fingerprint', {
