@@ -202,7 +202,7 @@ export default function CanaryDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', \`threat_dossier_\${new Date().getTime()}.html\`);
+    link.setAttribute('download', `threat_dossier_${new Date().getTime()}.html`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
