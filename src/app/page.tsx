@@ -112,7 +112,7 @@ export default function CanaryDashboard() {
     
     const headers = [
       'Timestamp', 'Token Name', 'Threat ID', 'Attacker IP', 'Location', 'User Agent',
-      'OS', 'Device Model', 'GPU', 'CPU Cores', 'RAM (GB)', 'Battery', 'Network'
+      'Device Model', 'GPU', 'CPU Cores', 'RAM (GB)', 'Battery', 'Network'
     ];
     
     const rows = alerts.map(a => [
@@ -122,7 +122,6 @@ export default function CanaryDashboard() {
       a.attacker_ip,
       `"${(a.location || '').replace(/"/g, '""')}"`,
       `"${(a.user_agent || '').replace(/"/g, '""')}"`,
-      a.os_platform || '',
       a.device_model || '',
       `"${(a.gpu_renderer || '').replace(/"/g, '""')}"`,
       a.hardware_concurrency || '',
@@ -616,9 +615,7 @@ export default function CanaryDashboard() {
                                   {alert.screen_resolution && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Screen:</span> <span className="font-mono text-emerald-200">{alert.screen_resolution}</span></div>
                                   )}
-                                  {alert.os_platform && (
-                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">OS:</span> <span className="font-mono text-emerald-200">{alert.os_platform}</span></div>
-                                  )}
+
                                   {alert.device_model && alert.device_model !== 'Unknown' && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Device:</span> <span className="font-mono text-emerald-200">{alert.device_model}</span></div>
                                   )}
