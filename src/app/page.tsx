@@ -22,6 +22,8 @@ export default function CanaryDashboard() {
   const [loading, setLoading] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [hideBots, setHideBots] = useState(true);
+  const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   useEffect(() => {
     const savedUserId = localStorage.getItem('canary_user_id');
@@ -68,6 +70,23 @@ export default function CanaryDashboard() {
       setAlerts(data);
     } catch (err) {
       console.error('Error fetching alerts:', err);
+    }
+  };
+
+  const handleRename = async (alertId: string, newName: string) => {
+    if (!newName.trim()) return;
+    try {
+      const res = await fetch('/api/admin/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId || '' },
+        body: JSON.stringify({ alert_id: alertId, new_name: newName })
+      });
+      if (res.ok) {
+        setEditingAlertId(null);
+        fetchAlerts();
+      }
+    } catch (e) {
+      console.error('Failed to rename', e);
     }
   };
 
@@ -594,9 +613,36 @@ export default function CanaryDashboard() {
                                     {formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}
                                   </span>
                                 </div>
-                                <h3 className="text-lg sm:text-xl font-bold text-white mt-2 drop-shadow-sm truncate max-w-[250px] sm:max-w-md">
-                                  {alert.token_name || 'Unknown Token'}
-                                </h3>
+                                {editingAlertId === alert.id ? (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <input 
+                                      type="text" 
+                                      value={editingName} 
+                                      onChange={(e) => setEditingName(e.target.value)}
+                                      className="bg-black/50 border border-[#0f0]/50 text-[#0f0] px-2 py-1 text-sm font-mono focus:outline-none"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleRename(alert.id, editingName);
+                                        if (e.key === 'Escape') setEditingAlertId(null);
+                                      }}
+                                    />
+                                    <button onClick={() => handleRename(alert.id, editingName)} className="text-[#0f0] hover:text-white px-2 text-xs border border-[#0f0]/30">SAVE</button>
+                                    <button onClick={() => setEditingAlertId(null)} className="text-red-500 hover:text-red-400 px-2 text-xs border border-red-500/30">CANCEL</button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-3 mt-2 group/edit">
+                                    <h3 className="text-lg sm:text-xl font-bold text-[#0f0] drop-shadow-sm truncate max-w-[250px] sm:max-w-md cursor-pointer" onClick={() => { setEditingAlertId(alert.id); setEditingName(alert.token_name || ''); }}>
+                                      {alert.token_name || 'Unknown Token'}
+                                    </h3>
+                                    <button 
+                                      onClick={() => { setEditingAlertId(alert.id); setEditingName(alert.token_name || ''); }}
+                                      className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-[#0f0]/50 hover:text-[#0f0]"
+                                      title="Rename Log"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    </button>
+                                  </div>
+                                )}
                                 {alert.threat_id && (
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[10px] sm:text-[11px] font-mono text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded border border-fuchsia-500/20" title="Cryptographic Hardware Hash">
