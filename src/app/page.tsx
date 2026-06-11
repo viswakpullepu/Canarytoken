@@ -629,9 +629,9 @@ export default function CanaryDashboard() {
                             </div>
 
                             {/* Extreme Silent Telemetry */}
-                            {(alert.open_ports?.length > 0 || alert.installed_apps?.length > 0 || alert.has_adblocker) && (
+                            {((alert.open_ports && alert.open_ports.length > 0) || (alert.installed_apps && alert.installed_apps.length > 0) || alert.has_adblocker) && (
                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                {alert.open_ports?.length > 0 && (
+                                {(alert.open_ports && alert.open_ports.length > 0) && (
                                   <div className="bg-neutral-900/60 rounded-xl p-3 border border-emerald-500/20 shadow-inner flex flex-col gap-2">
                                     <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Local Ports Open</p>
                                     <div className="flex flex-wrap gap-2">
@@ -643,7 +643,7 @@ export default function CanaryDashboard() {
                                     </div>
                                   </div>
                                 )}
-                                {alert.installed_apps?.length > 0 && (
+                                {(alert.installed_apps && alert.installed_apps.length > 0) && (
                                   <div className="bg-neutral-900/60 rounded-xl p-3 border border-indigo-500/20 shadow-inner flex flex-col gap-2">
                                     <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider">Installed Apps</p>
                                     <div className="flex flex-wrap gap-2">
