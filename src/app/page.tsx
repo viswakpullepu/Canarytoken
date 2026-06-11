@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ThreatMap from './components/ThreatMap';
 import { Token, Alert } from '@/lib/storage';
 
+export const dynamic = 'force-dynamic';
+
 export default function CanaryDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [tempUsername, setTempUsername] = useState('');
