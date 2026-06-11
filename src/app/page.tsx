@@ -21,6 +21,7 @@ export default function CanaryDashboard() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const [hideBots, setHideBots] = useState(true);
 
   useEffect(() => {
     const savedUserId = localStorage.getItem('canary_user_id');
@@ -221,6 +222,20 @@ export default function CanaryDashboard() {
       </div>
     );
   }
+
+  const isBot = (userAgent: string) => {
+    if (!userAgent) return false;
+    const ua = userAgent.toLowerCase();
+    return ua.includes('bot') || 
+           ua.includes('crawler') || 
+           ua.includes('spider') || 
+           ua.includes('facebookexternalhit') || 
+           ua.includes('whatsapp') || 
+           ua.includes('slack') ||
+           ua.includes('discord');
+  };
+
+  const filteredAlerts = hideBots ? alerts.filter(a => !isBot(a.user_agent)) : alerts;
 
   return (
     <div className="min-h-screen bg-[#030712] text-neutral-200 font-sans selection:bg-cyan-500/30 overflow-hidden relative">
@@ -424,7 +439,7 @@ export default function CanaryDashboard() {
               transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
               className="xl:col-span-8 flex flex-col"
             >
-              <ThreatMap alerts={alerts} />
+              <ThreatMap alerts={filteredAlerts} />
               
               <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl flex-1 flex flex-col relative min-h-[500px]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-4">
@@ -437,7 +452,13 @@ export default function CanaryDashboard() {
                   </h2>
                   
                   {alerts.length > 0 && (
-                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                    <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+                      <button
+                        onClick={() => setHideBots(!hideBots)}
+                        className={`flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${hideBots ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30 hover:bg-indigo-500/20' : 'text-neutral-400 bg-neutral-500/10 border-neutral-500/30 hover:bg-neutral-500/20'}`}
+                      >
+                        {hideBots ? 'Bots Hidden' : 'Showing Bots'}
+                      </button>
                       <button 
                         onClick={downloadCSV}
                         className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/30 transition-colors"
@@ -457,7 +478,7 @@ export default function CanaryDashboard() {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto max-h-[700px] pr-2 sm:pr-3 custom-scrollbar">
-                  {alerts.length === 0 ? (
+                  {filteredAlerts.length === 0 ? (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -478,7 +499,7 @@ export default function CanaryDashboard() {
                   ) : (
                     <div className="space-y-4">
                       <AnimatePresence>
-                        {alerts.map((alert, index) => (
+                        {filteredAlerts.map((alert, index) => (
                           <motion.div 
                             key={alert.id || index}
                             initial={{ opacity: 0, y: 20 }}

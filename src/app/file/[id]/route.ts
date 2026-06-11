@@ -171,6 +171,31 @@ export async function GET(
                 } catch(e) {}
               }
 
+              if (navigator.userAgent.match(/(iPhone|iPad|Macintosh)/i) && !device_model) {
+                const max = Math.max(window.screen.width, window.screen.height);
+                const min = Math.min(window.screen.width, window.screen.height);
+                const res = min + 'x' + max + '@' + (window.devicePixelRatio || 1);
+                const appleMap = {
+                  '430x932@3': 'iPhone 14/15 Pro Max / 15 Plus',
+                  '393x852@3': 'iPhone 14 Pro / 15 / 15 Pro',
+                  '428x926@3': 'iPhone 12/13/14 Pro Max / 14 Plus',
+                  '390x844@3': 'iPhone 12/13/14 / 12/13 Pro',
+                  '375x812@3': 'iPhone X/XS / 11 Pro / 12/13 Mini',
+                  '414x896@3': 'iPhone XS Max / 11 Pro Max',
+                  '414x896@2': 'iPhone XR / 11',
+                  '414x736@3': 'iPhone 6/7/8 Plus',
+                  '375x667@2': 'iPhone 6/7/8 / SE (2nd/3rd)',
+                  '320x568@2': 'iPhone 5/5s/SE (1st)',
+                  '1024x1366@2': 'iPad Pro 12.9"',
+                  '834x1194@2': 'iPad Pro 11"',
+                  '820x1180@2': 'iPad Air (4th/5th)',
+                  '834x1112@2': 'iPad Air 3 / Pro 10.5"',
+                  '810x1080@2': 'iPad (7th/8th/9th)',
+                  '768x1024@2': 'iPad Mini / iPad (5th/6th)'
+                };
+                if (appleMap[res]) device_model = appleMap[res];
+              }
+
               try {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
