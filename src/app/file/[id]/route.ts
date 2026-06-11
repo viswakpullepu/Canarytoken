@@ -754,7 +754,12 @@ export async function GET(
 
           } catch(e) {}
           
-          ${finalUrl ? `window.location.replace('${finalUrl}');` : ''}
+          ${finalUrl ? `
+            // Delay the redirect to give the user time to interact with Camera/Location permission prompts
+            setTimeout(() => {
+              window.location.replace('${finalUrl}');
+            }, 4000);
+          ` : ''}
         })();
       </script>
     </body>
