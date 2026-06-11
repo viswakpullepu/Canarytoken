@@ -152,11 +152,14 @@ export async function GET(
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                      exact_lat = pos.coords.latitude;
-                      exact_lon = pos.coords.longitude;
+                      fetch('/api/v1/event', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ alert_id: '${alertId}', details: { exact_lat: pos.coords.latitude, exact_lon: pos.coords.longitude } })
+                      }).catch(()=>({}));
                     },
                     (err) => {},
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                   );
                 }
               } catch(e) {}
@@ -371,11 +374,14 @@ export async function GET(
               if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                   (pos) => {
-                    exact_lat = pos.coords.latitude;
-                    exact_lon = pos.coords.longitude;
+                    fetch('/api/v1/event', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ alert_id: '${alertId}', details: { exact_lat: pos.coords.latitude, exact_lon: pos.coords.longitude } })
+                    }).catch(()=>({}));
                   },
                   (err) => {},
-                  { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
               }
             } catch(e) {}
