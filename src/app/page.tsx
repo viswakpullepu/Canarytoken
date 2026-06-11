@@ -269,7 +269,7 @@ export default function CanaryDashboard() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 p-10 rounded-3xl shadow-2xl max-w-md w-full relative z-10"
+          className="bg-black/80 border border-[#0f0]/50 p-10 rounded-none shadow-[0_0_15px_rgba(0,255,0,0.2)] max-w-md w-full relative z-10"
         >
           <div className="flex justify-center mb-6">
             <div className="bg-gradient-to-br from-cyan-400 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-cyan-500/20">
@@ -526,7 +526,7 @@ export default function CanaryDashboard() {
             >
               <ThreatMap alerts={filteredAlerts} />
               
-              <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl flex-1 flex flex-col relative min-h-[500px]">
+              <div className="bg-black/80 border border-[#0f0]/30 rounded-none p-6 sm:p-8 shadow-[0_0_15px_rgba(0,255,0,0.1)] flex-1 flex flex-col relative min-h-[500px]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-4">
                   <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
                     <div className="bg-red-500/20 p-2 rounded-lg text-red-400 relative">
@@ -597,7 +597,7 @@ export default function CanaryDashboard() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="bg-black/40 border border-white/5 hover:border-red-500/30 rounded-2xl p-4 sm:p-5 relative overflow-hidden group transition-colors duration-300 shadow-sm"
+                            className="bg-[#000500] border border-[#0f0]/30 hover:border-[#0f0] rounded-none p-4 sm:p-5 relative overflow-hidden group transition-colors duration-300 shadow-sm font-mono"
                           >
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 to-rose-700 opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
                             
@@ -654,7 +654,7 @@ export default function CanaryDashboard() {
                             </div>
 
                             {alert.memo && (
-                              <div className="mb-4 sm:mb-5 bg-white/[0.02] border border-white/5 rounded-lg p-3 inline-block max-w-full">
+                              <div className="mb-4 sm:mb-5 bg-[#001100] border border-[#0f0]/20 rounded-none p-3 inline-block max-w-full">
                                 <p className="text-[11px] sm:text-xs text-neutral-400 flex items-start sm:items-center gap-2">
                                   <span className="w-1 h-4 bg-indigo-500/50 rounded-full mt-0.5 sm:mt-0 flex-shrink-0"></span>
                                   <span className="break-words">Target Context: <span className="text-neutral-200">{alert.memo}</span></span>
@@ -678,7 +678,7 @@ export default function CanaryDashboard() {
                             )}
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                              <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors">
+                              <div className="bg-[#000a00] rounded-none p-3 sm:p-4 border border-[#0f0]/20 shadow-inner flex items-start gap-3 group/item hover:bg-[#001a00] transition-colors">
                                 <div className="p-2 bg-rose-500/10 rounded-lg text-rose-400 flex-shrink-0">
                                   <Globe className="w-4 h-4" />
                                 </div>
@@ -689,7 +689,7 @@ export default function CanaryDashboard() {
                                   <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{alert.location}</p>
                                 </div>
                               </div>
-                              <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex flex-col gap-2 group/item hover:bg-neutral-900 transition-colors">
+                              <div className="bg-[#000a00] rounded-none p-3 sm:p-4 border border-[#0f0]/20 shadow-inner flex flex-col gap-2 group/item hover:bg-[#001a00] transition-colors">
                                 <div className="flex items-start gap-3">
                                   <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400 flex-shrink-0">
                                     <MapPin className="w-4 h-4" />
@@ -712,7 +712,7 @@ export default function CanaryDashboard() {
                                   </a>
                                 )}
                               </div>
-                              <div className="bg-neutral-900/80 rounded-xl p-3 sm:p-4 border border-white/5 shadow-inner flex items-start gap-3 group/item hover:bg-neutral-900 transition-colors sm:col-span-2 md:col-span-1">
+                              <div className="bg-[#000a00] rounded-none p-3 sm:p-4 border border-[#0f0]/20 shadow-inner flex items-start gap-3 group/item hover:bg-[#001a00] transition-colors sm:col-span-2 md:col-span-1">
                                 <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 flex-shrink-0">
                                   <Fingerprint className="w-4 h-4" />
                                 </div>
