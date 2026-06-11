@@ -180,7 +180,7 @@ export default function CanaryDashboard() {
 
   if (!userId) {
     return (
-      <div className="min-h-screen bg-[#030712] text-neutral-200 flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-transparent text-[#0f0] flex items-center justify-center p-6 relative overflow-hidden">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -191,7 +191,7 @@ export default function CanaryDashboard() {
               <Radar className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-center mb-2">Private Workspace</h2>
+          <h2 className="text-2xl font-bold text-center mb-2 font-mono glitch-hover">SYSTEM.ROOT_LOGIN</h2>
           <p className="text-neutral-400 text-sm text-center mb-8">Enter a temporary username to create a private ephemeral session.</p>
           
           <form onSubmit={handleLogin} className="space-y-6">
@@ -213,7 +213,7 @@ export default function CanaryDashboard() {
               className="w-full relative overflow-hidden bg-white/5 border border-white/10 text-white font-bold py-4 px-4 rounded-xl transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.1)] hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] group"
             >
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-cyan-600/30 to-indigo-600/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <span className="relative flex items-center justify-center gap-2 tracking-wide">
+              <span className="relative flex items-center justify-center gap-2 tracking-wide font-mono uppercase glitch-hover">
                 Initialize Secure Session
               </span>
             </motion.button>
@@ -238,12 +238,12 @@ export default function CanaryDashboard() {
   const filteredAlerts = hideBots ? alerts.filter(a => !isBot(a.user_agent)) : alerts;
 
   return (
-    <div className="min-h-screen bg-[#030712] text-neutral-200 font-sans selection:bg-cyan-500/30 overflow-hidden relative">
+    <div className="min-h-screen bg-transparent text-[#0f0] font-mono selection:bg-green-500/30 overflow-hidden relative">
       {/* Dynamic Animated Background Effects */}
       <motion.div 
-        animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.3, 0.2] }}
+        animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/30 rounded-full blur-[120px] pointer-events-none"
+        className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0f0]/10 rounded-full blur-[120px] pointer-events-none"
       />
       <motion.div 
         animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
