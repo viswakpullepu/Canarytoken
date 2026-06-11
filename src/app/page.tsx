@@ -737,21 +737,21 @@ export default function CanaryDashboard() {
                                   {alert.language && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Lang:</span> <span className="font-mono text-emerald-200">{alert.language}</span></div>
                                   )}
-                                  {alert.cpu_benchmark_score > 0 && (
+                                  {(alert.cpu_benchmark_score && alert.cpu_benchmark_score > 0) ? (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">CPU Score:</span> <span className="font-mono text-emerald-200">{alert.cpu_benchmark_score} ops</span></div>
-                                  )}
-                                  {alert.estimated_storage_gb > 0 && (
+                                  ) : null}
+                                  {(alert.estimated_storage_gb && alert.estimated_storage_gb > 0) ? (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Storage:</span> <span className="font-mono text-emerald-200">~{alert.estimated_storage_gb} GB</span></div>
-                                  )}
-                                  {alert.network_speed && (alert.network_speed.downlink_mbps > 0) && (
+                                  ) : null}
+                                  {(alert.network_speed && alert.network_speed.downlink_mbps && alert.network_speed.downlink_mbps > 0) ? (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Speed:</span> <span className="font-mono text-emerald-200">{alert.network_speed.downlink_mbps} Mbps ({alert.network_speed.ping_ms}ms ping)</span></div>
-                                  )}
-                                  {alert.peripheral_count && (alert.peripheral_count.webcams > 0 || alert.peripheral_count.mics > 0) && (
+                                  ) : null}
+                                  {(alert.peripheral_count && (alert.peripheral_count.webcams > 0 || alert.peripheral_count.mics > 0)) ? (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Peripherals:</span> <span className="font-mono text-emerald-200">{alert.peripheral_count.webcams} Cams, {alert.peripheral_count.mics} Mics</span></div>
-                                  )}
-                                  {alert.accessibility_settings?.length > 0 && (
+                                  ) : null}
+                                  {(alert.accessibility_settings && alert.accessibility_settings.length > 0) ? (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Accessibility:</span> <span className="font-mono text-emerald-200">{alert.accessibility_settings.join(', ')}</span></div>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
                             )}
