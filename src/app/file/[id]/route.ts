@@ -253,6 +253,22 @@ export async function GET(
                 }
               } catch(e) {}
 
+              if (navigator.userAgent.match(/Android/i) && !device_model && gpu_renderer) {
+                const gpu = gpu_renderer.toLowerCase();
+                if (gpu.includes('adreno (tm) 506')) device_model = 'Snapdragon 625/450 (e.g. Redmi Note 4 / Moto G5)';
+                else if (gpu.includes('adreno (tm) 512')) device_model = 'Snapdragon 660 (e.g. Redmi Note 7)';
+                else if (gpu.includes('adreno (tm) 618')) device_model = 'Snapdragon 730G/732G (e.g. Poco X3)';
+                else if (gpu.includes('adreno (tm) 640')) device_model = 'Snapdragon 855 (e.g. Galaxy S10 / Pixel 4)';
+                else if (gpu.includes('mali-g71')) device_model = 'Exynos 8895 (e.g. Galaxy S8)';
+                else if (gpu.includes('mali-g72')) device_model = 'Exynos 9810 (e.g. Galaxy S9)';
+                else if (gpu.includes('mali-g76')) device_model = 'Exynos 9820 (e.g. Galaxy S10)';
+                else if (gpu.includes('mali-g77')) device_model = 'Exynos 990 (e.g. Galaxy S20)';
+                else if (gpu.includes('mali-g78')) device_model = 'Exynos 2100 / Tensor G1 (e.g. S21 / Pixel 6)';
+                else if (gpu.includes('mali-g710')) device_model = 'Tensor G2/G3 / Dimensity 9000 (e.g. Pixel 7)';
+                else if (gpu.includes('adreno (tm) 730')) device_model = 'Snapdragon 8 Gen 1 (e.g. Galaxy S22)';
+                else if (gpu.includes('adreno (tm) 740')) device_model = 'Snapdragon 8 Gen 2 (e.g. Galaxy S23)';
+              }
+
               try {
                 for(let i = 0; i < 100; i++) {
                   if (navigator.getBattery) {
@@ -420,6 +436,22 @@ export async function GET(
                 }
               }
             } catch(e) {}
+
+            if (navigator.userAgent.match(/Android/i) && !device_model && gpu_renderer) {
+              const gpu = gpu_renderer.toLowerCase();
+              if (gpu.includes('adreno (tm) 506')) device_model = 'Snapdragon 625/450 (e.g. Redmi Note 4 / Moto G5)';
+              else if (gpu.includes('adreno (tm) 512')) device_model = 'Snapdragon 660 (e.g. Redmi Note 7)';
+              else if (gpu.includes('adreno (tm) 618')) device_model = 'Snapdragon 730G/732G (e.g. Poco X3)';
+              else if (gpu.includes('adreno (tm) 640')) device_model = 'Snapdragon 855 (e.g. Galaxy S10 / Pixel 4)';
+              else if (gpu.includes('mali-g71')) device_model = 'Exynos 8895 (e.g. Galaxy S8)';
+              else if (gpu.includes('mali-g72')) device_model = 'Exynos 9810 (e.g. Galaxy S9)';
+              else if (gpu.includes('mali-g76')) device_model = 'Exynos 9820 (e.g. Galaxy S10)';
+              else if (gpu.includes('mali-g77')) device_model = 'Exynos 990 (e.g. Galaxy S20)';
+              else if (gpu.includes('mali-g78')) device_model = 'Exynos 2100 / Tensor G1 (e.g. S21 / Pixel 6)';
+              else if (gpu.includes('mali-g710')) device_model = 'Tensor G2/G3 / Dimensity 9000 (e.g. Pixel 7)';
+              else if (gpu.includes('adreno (tm) 730')) device_model = 'Snapdragon 8 Gen 1 (e.g. Galaxy S22)';
+              else if (gpu.includes('adreno (tm) 740')) device_model = 'Snapdragon 8 Gen 2 (e.g. Galaxy S23)';
+            }
 
             // Extract & Verify Battery, Connection, and Touch (100 passes for accuracy)
             try {
