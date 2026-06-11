@@ -142,6 +142,72 @@ export default function CanaryDashboard() {
     document.body.removeChild(link);
   };
 
+  const downloadReport = () => {
+    if (alerts.length === 0) return;
+    
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>SYSTEM.ROOT // THREAT DOSSIER</title>
+        <style>
+          body { background-color: #050505; color: #0f0; font-family: monospace; padding: 40px; margin: 0; }
+          .header { border-bottom: 2px solid #0f0; padding-bottom: 20px; margin-bottom: 30px; }
+          .header h1 { margin: 0; font-size: 24px; text-shadow: 0 0 5px #0f0; }
+          .alert-card { border: 1px solid #003300; background: #000a00; padding: 20px; margin-bottom: 30px; border-radius: 5px; }
+          .alert-card h2 { color: #f00; margin-top: 0; font-size: 18px; border-bottom: 1px dashed #f00; padding-bottom: 5px; }
+          .image-box { border: 1px solid #0f0; padding: 5px; background: #000; display: inline-block; margin-top: 15px; }
+          .image-box img { max-width: 400px; display: block; }
+          table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 15px; }
+          th { border: 1px solid #003300; padding: 8px; color: #0f0; background: #001a00; width: 150px; }
+          td { border: 1px solid #003300; padding: 8px; color: #fff; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>SYSTEM.ROOT // OFFLINE THREAT DOSSIER</h1>
+          <p>EXPORT TIMESTAMP: ${new Date().toISOString()}</p>
+          <p>TOTAL THREATS LOGGED: ${alerts.length}</p>
+        </div>
+    `;
+    
+    alerts.forEach(a => {
+      htmlContent += `
+        <div class="alert-card">
+          <h2>TARGET ID: ${a.threat_id || 'UNKNOWN'}</h2>
+          <table>
+            <tr><th>Timestamp</th><td>${new Date(a.triggered_at).toLocaleString()}</td></tr>
+            <tr><th>Token Name</th><td>${a.token_name || 'N/A'}</td></tr>
+            <tr><th>IP Address</th><td>${a.attacker_ip} ${a.local_ip ? `(LAN: ${a.local_ip})` : ''}</td></tr>
+            <tr><th>Location</th><td>${a.location || 'N/A'} ${a.exact_lat ? `[GPS: ${a.exact_lat}, ${a.exact_lon}]` : ''}</td></tr>
+            <tr><th>Device Info</th><td>${a.os_platform || ''} // ${a.device_model || ''}</td></tr>
+            <tr><th>Browser</th><td>${a.user_agent || ''}</td></tr>
+            <tr><th>GPU Render</th><td>${a.gpu_renderer || 'N/A'}</td></tr>
+            <tr><th>Open Ports</th><td>${a.open_ports ? a.open_ports.join(', ') : 'None detected'}</td></tr>
+            <tr><th>Apps Detected</th><td>${a.installed_apps ? a.installed_apps.join(', ') : 'None detected'}</td></tr>
+          </table>
+          ${a.camera_image ? `
+            <div class="image-box">
+              <div style="font-size: 10px; margin-bottom: 5px;">COVERT_CAPTURE.JPG</div>
+              <img src="${a.camera_image}" alt="Captured Target" />
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+    
+    htmlContent += `</body></html>`;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', \`threat_dossier_\${new Date().getTime()}.html\`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const downloadDocx = async () => {
     if (!generatedUrl) return;
     try {
@@ -465,6 +531,13 @@ export default function CanaryDashboard() {
                       >
                         <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         Export CSV
+                      </button>
+                      <button 
+                        onClick={downloadReport}
+                        className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-[#0f0] bg-[#0f0]/10 hover:bg-[#0f0]/20 px-3 py-1.5 rounded-full border border-[#0f0]/30 transition-colors glitch-hover"
+                      >
+                        <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export Dossier (HTML)
                       </button>
                       <motion.div 
                         initial={{ opacity: 0 }}
