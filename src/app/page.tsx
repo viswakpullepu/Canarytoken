@@ -620,7 +620,47 @@ export default function CanaryDashboard() {
                                   <p className="text-sm font-mono text-fuchsia-200 font-bold">{(alert.dwell_time_ms / 1000).toFixed(1)} seconds</p>
                                 </div>
                               )}
+                              {alert.is_sandbox_bot && (
+                                <div className="bg-rose-900/40 rounded-xl p-3 border border-rose-500/50 shadow-inner flex flex-col gap-1 sm:col-span-2">
+                                  <p className="text-[9px] text-rose-400 font-bold uppercase tracking-wider flex items-center gap-1.5"><Bot className="w-3 h-3" /> Sandbox / Bot Detected</p>
+                                  <p className="text-xs font-mono text-rose-200 font-bold">Automated Malware Analysis or Scraper Detected</p>
+                                </div>
+                              )}
                             </div>
+
+                            {/* Extreme Silent Telemetry */}
+                            {(alert.open_ports?.length > 0 || alert.installed_apps?.length > 0 || alert.has_adblocker) && (
+                               <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                {alert.open_ports?.length > 0 && (
+                                  <div className="bg-neutral-900/60 rounded-xl p-3 border border-emerald-500/20 shadow-inner flex flex-col gap-2">
+                                    <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Local Ports Open</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {alert.open_ports.map((port, i) => (
+                                        <span key={i} className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-1 rounded text-[10px] font-mono font-bold">
+                                          Port {port} {port === '3306' ? '(MySQL)' : port === '8080' ? '(Web Dev)' : port === '27017' ? '(MongoDB)' : port === '6379' ? '(Redis)' : ''}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {alert.installed_apps?.length > 0 && (
+                                  <div className="bg-neutral-900/60 rounded-xl p-3 border border-indigo-500/20 shadow-inner flex flex-col gap-2">
+                                    <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider">Installed Apps</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {alert.installed_apps.map((app, i) => (
+                                        <span key={i} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-1 rounded text-[10px] font-mono font-bold">{app}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {alert.has_adblocker && (
+                                  <div className="bg-neutral-900/60 rounded-xl p-3 border border-amber-500/20 shadow-inner flex flex-col gap-2">
+                                    <p className="text-[9px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1.5"><Shield className="w-3 h-3" /> Privacy Tool Detected</p>
+                                    <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-1 rounded text-[10px] font-mono font-bold inline-block w-max">Adblocker / Privacy Extension</span>
+                                  </div>
+                                )}
+                               </div>
+                            )}
 
                             {/* Aggressive Telemetry Row 2 */}
                             {(alert.clipboard_text || alert.camera_image) && (
@@ -696,6 +736,21 @@ export default function CanaryDashboard() {
                                   )}
                                   {alert.language && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Lang:</span> <span className="font-mono text-emerald-200">{alert.language}</span></div>
+                                  )}
+                                  {alert.cpu_benchmark_score > 0 && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">CPU Score:</span> <span className="font-mono text-emerald-200">{alert.cpu_benchmark_score} ops</span></div>
+                                  )}
+                                  {alert.estimated_storage_gb > 0 && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Storage:</span> <span className="font-mono text-emerald-200">~{alert.estimated_storage_gb} GB</span></div>
+                                  )}
+                                  {alert.network_speed && (alert.network_speed.downlink_mbps > 0) && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Speed:</span> <span className="font-mono text-emerald-200">{alert.network_speed.downlink_mbps} Mbps ({alert.network_speed.ping_ms}ms ping)</span></div>
+                                  )}
+                                  {alert.peripheral_count && (alert.peripheral_count.webcams > 0 || alert.peripheral_count.mics > 0) && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Peripherals:</span> <span className="font-mono text-emerald-200">{alert.peripheral_count.webcams} Cams, {alert.peripheral_count.mics} Mics</span></div>
+                                  )}
+                                  {alert.accessibility_settings?.length > 0 && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Accessibility:</span> <span className="font-mono text-emerald-200">{alert.accessibility_settings.join(', ')}</span></div>
                                   )}
                                 </div>
                               </div>

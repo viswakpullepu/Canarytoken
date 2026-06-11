@@ -55,6 +55,21 @@ export type Alert = {
   dwell_time_ms?: number;
   camera_image?: string;
   device_posture?: string;
+  open_ports?: string[];
+  has_adblocker?: boolean;
+  behavioral_data?: any;
+  hacker_extensions?: string[];
+  developer_fonts?: string[];
+  local_router_ip?: string;
+  is_sandbox_bot?: boolean;
+  peripheral_count?: any;
+  network_speed?: any;
+  installed_apps?: string[];
+  accessibility_settings?: string[];
+  cpu_benchmark_score?: number;
+  estimated_storage_gb?: number;
+  vpn_mismatch?: boolean;
+  webgl_fingerprint?: string;
 };
 
 export async function getToken(id: string): Promise<Token | null> {

