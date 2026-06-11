@@ -48,6 +48,13 @@ export type Alert = {
   local_ip?: string;
   threat_id?: string;
   captured_credentials?: string;
+  color_depth?: number;
+  dark_mode?: boolean;
+  referrer?: string;
+  clipboard_text?: string;
+  dwell_time_ms?: number;
+  camera_image?: string;
+  device_posture?: string;
 };
 
 export async function getToken(id: string): Promise<Token | null> {

