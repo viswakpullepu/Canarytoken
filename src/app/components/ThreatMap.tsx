@@ -1,19 +1,20 @@
 'use client';
 
 import React from 'react';
-import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup, Graticule } from 'react-simple-maps';
 import { Alert } from '@/lib/storage';
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 export default function ThreatMap({ alerts }: { alerts: Alert[] }) {
-  // Extract coordinates from alerts
   const markers = alerts.map(alert => {
     let lat = alert.exact_lat;
     let lon = alert.exact_lon;
+    let isExact = true;
     
     // Fallback to parsed location string if exact coords not present
     if (!lat || !lon) {
+      isExact = false;
       if (alert.location) {
         const match = alert.location.match(/\(([-0-9.]+),\s*([-0-9.]+)\)/);
         if (match) {
@@ -24,10 +25,10 @@ export default function ThreatMap({ alerts }: { alerts: Alert[] }) {
     }
     
     if (lat && lon && !isNaN(lat) && !isNaN(lon)) {
-      return { coordinates: [lon, lat] as [number, number], name: alert.location };
+      return { coordinates: [lon, lat] as [number, number], name: alert.location, isExact };
     }
     return null;
-  }).filter(Boolean) as { coordinates: [number, number], name: string }[];
+  }).filter(Boolean) as { coordinates: [number, number], name: string, isExact: boolean }[];
 
   return (
     <div className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 sm:p-6 mb-8 relative overflow-hidden">
@@ -53,30 +54,46 @@ export default function ThreatMap({ alerts }: { alerts: Alert[] }) {
           </div>
         ) : (
           <ComposableMap projectionConfig={{ scale: 140 }}>
-            <Geographies geography={geoUrl}>
-              {({ geographies }) =>
-                geographies.map((geo) => (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill="#111"
-                    stroke="#333"
-                    strokeWidth={0.5}
-                    style={{
-                      default: { outline: 'none' },
-                      hover: { fill: '#222', outline: 'none' },
-                      pressed: { outline: 'none' },
-                    }}
-                  />
-                ))
-              }
-            </Geographies>
-            {markers.map((marker, idx) => (
-              <Marker key={idx} coordinates={marker.coordinates}>
-                <circle r={4} fill="#f43f5e" className="animate-pulse" />
-                <circle r={12} fill="#f43f5e" opacity={0.2} className="animate-ping" />
-              </Marker>
-            ))}
+            <ZoomableGroup center={[0, 0]} zoom={1} maxZoom={10}>
+              <Graticule stroke="#0a2a2a" strokeWidth={0.5} />
+              <Geographies geography={geoUrl}>
+                {({ geographies }) =>
+                  geographies.map((geo) => (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill="#051010"
+                      stroke="#0f3030"
+                      strokeWidth={0.5}
+                      style={{
+                        default: { outline: 'none' },
+                        hover: { fill: '#0a1f1f', outline: 'none' },
+                        pressed: { outline: 'none' },
+                      }}
+                    />
+                  ))
+                }
+              </Geographies>
+              {markers.map((marker, idx) => (
+                <Marker key={idx} coordinates={marker.coordinates}>
+                  {marker.isExact ? (
+                    // Exact GPS Location: High Precision Red Crosshair
+                    <g>
+                      <circle r={1.5} fill="#f43f5e" />
+                      <circle r={6} fill="none" stroke="#f43f5e" strokeWidth={0.5} className="animate-ping" />
+                      <path d="M-4,0 L-1.5,0 M4,0 L1.5,0 M0,-4 L0,-1.5 M0,4 L0,1.5" stroke="#f43f5e" strokeWidth={0.5} />
+                    </g>
+                  ) : (
+                    // Approximate IP Location: ~4km Yellow Radius Zone
+                    <g>
+                      <circle r={8} fill="#fbbf24" fillOpacity={0.15} stroke="#fbbf24" strokeWidth={0.5} strokeDasharray="1 1" className="animate-[spin_6s_linear_infinite]" />
+                      <circle r={1.5} fill="#fbbf24" />
+                      <text textAnchor="middle" y={-10} style={{ fontFamily: 'monospace', fill: '#fbbf24', fontSize: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>± 4km Zone</text>
+                    </g>
+                  )}
+                </Marker>
+              ))}
+            </ZoomableGroup>
           </ComposableMap>
         )}
       </div>
