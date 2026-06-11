@@ -35,6 +35,20 @@ export async function GET(
     location += ` (${lat}, ${lon})`;
   }
 
+  // Supplement location data using ip-api.com if Vercel headers are missing
+  if (location === 'Unknown Location' && attacker_ip !== 'Unknown IP' && attacker_ip !== '127.0.0.1' && attacker_ip !== '::1') {
+    try {
+      const res = await fetch(`http://ip-api.com/json/${attacker_ip}`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        location = `${data.city}, ${data.regionName}, ${data.country}`;
+        if (data.isp) location += ` - ISP: ${data.isp}`;
+      }
+    } catch(err) {
+      console.error('IP API lookup failed:', err);
+    }
+  }
+
   let alertId = '';
   try {
     const alert = await createAlert(token_id, attacker_ip, user_agent, location);
