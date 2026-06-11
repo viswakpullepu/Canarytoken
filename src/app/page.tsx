@@ -884,6 +884,7 @@ export default function CanaryDashboard() {
                                 </div>
                               </div>
                             )}
+                            </div>
                           </motion.div>
                         ))}
                       </AnimatePresence>
