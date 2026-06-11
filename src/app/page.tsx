@@ -589,16 +589,26 @@ export default function CanaryDashboard() {
                       </div>
                     </motion.div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:top-4 before:bottom-0 before:left-[11px] sm:before:left-[15px] before:w-[2px] before:bg-gradient-to-b before:from-[#0f0]/60 before:to-transparent pt-2">
                       <AnimatePresence>
                         {filteredAlerts.map((alert, index) => (
                           <motion.div 
                             key={alert.id || index}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="bg-[#000500] border border-[#0f0]/30 hover:border-[#0f0] rounded-none p-4 sm:p-5 relative overflow-hidden group transition-colors duration-300 shadow-sm font-mono"
+                            className="relative"
                           >
+                            {/* Timeline Node */}
+                            <div className="absolute left-[-29px] sm:left-[-37px] top-6 w-3 h-3 sm:w-4 sm:h-4 bg-[#001100] border-2 border-[#0f0] rounded-sm shadow-[0_0_10px_#0f0] z-10 flex items-center justify-center">
+                              <div className="w-1 h-1 bg-[#0f0] rounded-sm animate-ping"></div>
+                            </div>
+                            
+                            {/* Connecting Line */}
+                            <div className="absolute left-[-20px] sm:left-[-29px] top-[29px] sm:top-[31px] w-[20px] sm:w-[29px] h-[1px] bg-[#0f0]/40 z-0"></div>
+
+                            {/* Card */}
+                            <div className="bg-[#000500] border border-[#0f0]/30 hover:border-[#0f0] rounded-none p-4 sm:p-5 relative overflow-hidden group transition-colors duration-300 shadow-[0_0_15px_rgba(0,255,0,0.05)] font-mono ml-0">
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 to-rose-700 opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
                             
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 gap-3 pl-2 sm:pl-0">
