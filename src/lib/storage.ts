@@ -222,21 +222,32 @@ export async function updateAlertDetails(alert_id: string, details: Partial<Aler
     const user_id = await redis.get(`alert_lookup:${alert_id}`);
     if (!user_id) return;
 
-    // Fetch alerts for this user
-    const alertsData = await redis.lrange(`alerts:${user_id}`, 0, 50);
-    for (let i = 0; i < alertsData.length; i++) {
-      const alert: Alert = JSON.parse(alertsData[i]);
-      if (alert.id === alert_id) {
-        // Update the alert
-        const updatedAlert = { ...alert, ...details };
-        // Replace in list (LSET is 0-indexed)
-        await redis.lset(`alerts:${user_id}`, i, JSON.stringify(updatedAlert));
-        
-        // Fire secondary telemetry webhooks
-        await sendDiscordWebhook(updatedAlert, true);
-        await sendNtfyNotification(updatedAlert, user_id, true);
-        break;
-      }
+    const script = `
+      local user_id = redis.call("GET", "alert_lookup:" .. KEYS[1])
+      if not user_id then return nil end
+      local alerts = redis.call("LRANGE", "alerts:" .. user_id, 0, 50)
+      for i, alert_str in ipairs(alerts) do
+        local alert = cjson.decode(alert_str)
+        if alert.id == KEYS[1] then
+          local details = cjson.decode(ARGV[1])
+          for k, v in pairs(details) do
+            alert[k] = v
+          end
+          local updated_str = cjson.encode(alert)
+          redis.call("LSET", "alerts:" .. user_id, i - 1, updated_str)
+          return updated_str
+        end
+      end
+      return nil
+    `;
+
+    const result = await redis.eval(script, 1, alert_id, JSON.stringify(details));
+
+    if (result && typeof result === 'string') {
+      const updatedAlert = JSON.parse(result);
+      // Fire secondary telemetry webhooks
+      await sendDiscordWebhook(updatedAlert, true);
+      await sendNtfyNotification(updatedAlert, user_id, true);
     }
   } catch (err) {
     console.error('Redis update alert error:', err);
