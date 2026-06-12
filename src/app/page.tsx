@@ -24,10 +24,7 @@ export default function CanaryDashboard() {
   const [hideBots, setHideBots] = useState(true);
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [ntfyTopic, setNtfyTopic] = useState('');
-  const [ntfySaved, setNtfySaved] = useState(false);
-  const [discordWebhook, setDiscordWebhook] = useState('');
-  const [discordSaved, setDiscordSaved] = useState(false);
+
 
   useEffect(() => {
     const savedUserId = localStorage.getItem('canary_user_id');
@@ -40,7 +37,6 @@ export default function CanaryDashboard() {
     if (!userId) return;
     
     fetchAlerts();
-    fetchSettings();
     const interval = setInterval(() => {
       fetchAlerts();
       setPulse(true);
@@ -49,48 +45,26 @@ export default function CanaryDashboard() {
     return () => clearInterval(interval);
   }, [userId]);
 
-  const fetchSettings = async () => {
-    try {
-      const res = await fetch('/api/admin/settings', { headers: { 'x-user-id': userId || '' } });
-      const data = await res.json();
-      if (data.ntfy_topic) setNtfyTopic(data.ntfy_topic);
-      if (data.discord_webhook) setDiscordWebhook(data.discord_webhook);
-    } catch(e) {}
-  };
-
-  const saveNtfyTopic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId || '' },
-        body: JSON.stringify({ ntfy_topic: ntfyTopic.trim() })
-      });
-      setNtfySaved(true);
-      setTimeout(() => setNtfySaved(false), 2000);
-    } catch(e) {}
-  };
-
-  const saveDiscordWebhook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId || '' },
-        body: JSON.stringify({ discord_webhook: discordWebhook.trim() })
-      });
-      setDiscordSaved(true);
-      setTimeout(() => setDiscordSaved(false), 2000);
-    } catch(e) {}
-  };
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tempUsername.trim()) return;
-    // Simple temporary user ID generation based on username + random string
     const newUserId = tempUsername.trim().toLowerCase() + '-' + Math.random().toString(36).substring(7);
     localStorage.setItem('canary_user_id', newUserId);
     setUserId(newUserId);
+  };
+
+  const fetchAlerts = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch('/api/admin', {
+        headers: { 'x-user-id': userId }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAlerts(data);
+    } catch (err) {
+      console.error('Error fetching alerts:', err);
+    }
   };
 
   const handleLogout = () => {
@@ -554,68 +528,6 @@ export default function CanaryDashboard() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-
-              {/* Ntfy Push Notifications Settings */}
-              <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden group transition-colors duration-500">
-                <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                  <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400">
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  Push Notifications
-                </h2>
-                <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
-                  Get free, instant mobile alerts using <a href="https://ntfy.sh" target="_blank" className="text-emerald-400 hover:underline">ntfy.sh</a>. Install the app and choose a secret topic name.
-                </p>
-                <form onSubmit={saveNtfyTopic} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Ntfy Topic Name</label>
-                    <input
-                      type="text"
-                      value={ntfyTopic}
-                      onChange={(e) => setNtfyTopic(e.target.value)}
-                      placeholder="e.g., canary_alerts_99x"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full relative overflow-hidden bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 font-semibold py-3 px-4 rounded-xl transition-colors duration-300 shadow-sm"
-                  >
-                    {ntfySaved ? 'Topic Saved!' : 'Save Push Settings'}
-                  </button>
-                </form>
-              </div>
-
-              {/* Discord Webhook Settings */}
-              <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden group transition-colors duration-500 mt-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                  <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400">
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  Discord Webhook
-                </h2>
-                <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
-                  Get rich, formatted alerts directly in your private Discord server. Create a webhook in your server settings and paste the URL here.
-                </p>
-                <form onSubmit={saveDiscordWebhook} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Webhook URL</label>
-                    <input
-                      type="url"
-                      value={discordWebhook}
-                      onChange={(e) => setDiscordWebhook(e.target.value)}
-                      placeholder="https://discord.com/api/webhooks/..."
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full relative overflow-hidden bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 font-semibold py-3 px-4 rounded-xl transition-colors duration-300 shadow-sm"
-                  >
-                    {discordSaved ? 'Webhook Saved!' : 'Save Discord Webhook'}
-                  </button>
-                </form>
               </div>
             </motion.div>
 
