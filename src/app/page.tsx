@@ -5,6 +5,7 @@ import { ShieldAlert, Plus, Copy, Check, Activity, Clock, Globe, Fingerprint, Za
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThreatMap from './components/ThreatMap';
+import ThreatChart from './components/ThreatChart';
 import { Token, Alert } from '@/lib/storage';
 
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -22,14 +23,20 @@ export default function CanaryDashboard() {
   const [payloadType, setPayloadType] = useState<'invisible' | 'redirect' | 'fake_login'>('invisible');
   const [maxTriggers, setMaxTriggers] = useState<string>('');
   const [expiresInDays, setExpiresInDays] = useState<string>('');
+  const [tokenTags, setTokenTags] = useState('');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [hideBots, setHideBots] = useState(true);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingNotes, setEditingNotes] = useState('');
+  const [editingStatus, setEditingStatus] = useState<'new'|'investigating'|'resolved'>('new');
+  const [showSettings, setShowSettings] = useState(false);
+  const [discordWebhook, setDiscordWebhook] = useState('');
 
 
 
@@ -38,6 +45,7 @@ export default function CanaryDashboard() {
     if (!userId) return;
     
     fetchAlerts();
+    fetchSettings();
     const interval = setInterval(() => {
       fetchAlerts();
       setPulse(true);
@@ -45,6 +53,25 @@ export default function CanaryDashboard() {
     }, 5000);
     return () => clearInterval(interval);
   }, [userId]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/settings', { headers: { 'x-user-id': userId } });
+      const data = await res.json();
+      if (data.discord_webhook) setDiscordWebhook(data.discord_webhook);
+    } catch(e) {}
+  };
+
+  const saveSettings = async () => {
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        body: JSON.stringify({ discord_webhook: discordWebhook })
+      });
+      setShowSettings(false);
+    } catch(e) {}
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +141,8 @@ export default function CanaryDashboard() {
           redirect_url: redirectUrl, 
           payload_type: payloadType,
           max_triggers: maxTriggers ? parseInt(maxTriggers) : undefined,
-          expires_at: expiresInDays ? new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString() : undefined
+          expires_at: expiresInDays ? new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString() : undefined,
+          tags: tokenTags.split(',').map(t => t.trim()).filter(Boolean)
         }),
       });
       const data = await res.json();
@@ -127,6 +155,7 @@ export default function CanaryDashboard() {
       setRedirectUrl('');
       setMaxTriggers('');
       setExpiresInDays('');
+      setTokenTags('');
     } catch (err) {
       console.error('Error generating token:', err);
       alert('Failed to generate token.');
@@ -310,6 +339,52 @@ export default function CanaryDashboard() {
     }
   };
 
+  const downloadAws = async () => {
+    if (!generatedUrl) return;
+    try {
+      const tokenId = generatedUrl.split('/').pop();
+      const res = await fetch('/api/v1/generate-aws', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id: tokenId, host: window.location.origin })
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'credentials');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch(e) {
+      console.error(e);
+      alert("Failed to generate AWS Decoy");
+    }
+  };
+
+  const downloadKubeconfig = async () => {
+    if (!generatedUrl) return;
+    try {
+      const tokenId = generatedUrl.split('/').pop();
+      const res = await fetch('/api/v1/generate-kubeconfig', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'kubeconfig' })
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${tokenName || 'kubeconfig'}.yaml`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch(e) {
+      console.error(e);
+      alert("Failed to generate Kubeconfig Decoy");
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -392,10 +467,76 @@ export default function CanaryDashboard() {
            ua.includes('discord');
   };
 
-  const filteredAlerts = hideBots ? alerts.filter(a => !isBot(a.user_agent)) : alerts;
+  const filteredAlertsByBot = hideBots ? alerts.filter(a => !isBot(a.user_agent)) : alerts;
+  
+  // Extract all unique tags
+  const allTags = Array.from(new Set(alerts.flatMap(a => {
+    // If we have token tags attached to the token via lookup (not currently synced in UI but you could)
+    // For now, let's use the UI tags if they were returned. Note: Alert type doesn't have token tags directly,
+    // so we'd need to fetch tokens to map them, OR we just use a generic search. Let's do generic text search filter.
+    return [] as string[];
+  })));
+
+  const filteredAlerts = activeTagFilter ? filteredAlertsByBot.filter(a => a.token_name?.toLowerCase().includes(activeTagFilter.toLowerCase()) || a.memo?.toLowerCase().includes(activeTagFilter.toLowerCase())) : filteredAlertsByBot;
+
+  const handleUpdateAlertState = async (alertId: string, status?: 'new'|'investigating'|'resolved', notes?: string) => {
+    try {
+      const res = await fetch(`/api/admin/alert/${alertId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId || '' },
+        body: JSON.stringify({ status, notes })
+      });
+      if (res.ok) {
+        setEditingAlertId(null);
+        fetchAlerts();
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-transparent text-[#0f0] font-mono selection:bg-green-500/30 overflow-hidden relative">
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#000500] border border-[#0f0]/30 w-full max-w-md p-6 relative overflow-hidden font-mono"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500"></div>
+              <h3 className="text-xl font-bold text-[#0f0] mb-4 uppercase tracking-widest">System Settings</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Discord Webhook URL</label>
+                  <input
+                    type="password"
+                    value={discordWebhook}
+                    onChange={(e) => setDiscordWebhook(e.target.value)}
+                    placeholder="https://discord.com/api/webhooks/..."
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#0f0]/50 text-sm text-white"
+                  />
+                  <p className="text-[10px] text-neutral-500 mt-1">Get instant silent alerts in your Discord server.</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8">
+                <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-xs font-bold text-neutral-400 hover:text-white border border-neutral-600 rounded">CANCEL</button>
+                <button onClick={saveSettings} className="px-4 py-2 text-xs font-bold text-black bg-[#0f0] hover:bg-[#0c0] rounded transition-colors">SAVE CONFIG</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Dynamic Animated Background Effects */}
       <motion.div 
         animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
@@ -450,6 +591,9 @@ export default function CanaryDashboard() {
                   <span className="hidden sm:inline">Monitoring </span><span className="text-white font-bold">{alerts.length}</span> <span className="sm:hidden">Alerts</span><span className="hidden sm:inline">Triggers</span>
                 </span>
               </motion.div>
+              <button onClick={() => setShowSettings(true)} className="text-neutral-400 hover:text-white transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </button>
               <button onClick={handleLogout} className="text-sm text-neutral-500 hover:text-white transition-colors">Logout</button>
             </div>
           </motion.header>
@@ -547,6 +691,16 @@ export default function CanaryDashboard() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Tags (Comma separated)</label>
+                    <input
+                      type="text"
+                      value={tokenTags}
+                      onChange={(e) => setTokenTags(e.target.value)}
+                      placeholder="e.g., prod, database, external"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
+                    />
+                  </div>
                   
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -599,7 +753,7 @@ export default function CanaryDashboard() {
                             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 mt-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
                           <button onClick={downloadDocx} className="flex-1 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
                             <span className="font-bold">.DOCX</span> Decoy
                           </button>
@@ -608,6 +762,12 @@ export default function CanaryDashboard() {
                           </button>
                           <button onClick={downloadSql} className="flex-1 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
                             <span className="font-bold">.SQL</span> Dump
+                          </button>
+                          <button onClick={downloadAws} className="flex-1 bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 text-orange-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                            <span className="font-bold">AWS</span> Keys
+                          </button>
+                          <button onClick={downloadKubeconfig} className="flex-1 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                            <span className="font-bold">Kube</span> Config
                           </button>
                         </div>
                         <p className="text-[10px] sm:text-[11px] text-cyan-500/60 mt-3 font-medium text-center">Embed this invisible tripwire in your documents, emails, or servers.</p>
@@ -625,6 +785,7 @@ export default function CanaryDashboard() {
               transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
               className="xl:col-span-8 flex flex-col"
             >
+              <ThreatChart alerts={filteredAlerts} />
               <ThreatMap alerts={filteredAlerts} />
               
               <div className="bg-black/80 border border-[#0f0]/30 rounded-none p-6 sm:p-8 shadow-[0_0_15px_rgba(0,255,0,0.1)] flex-1 flex flex-col relative min-h-[500px]">
@@ -719,39 +880,70 @@ export default function CanaryDashboard() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                                     Breach Detected
                                   </span>
+                                  {alert.status === 'investigating' && (
+                                    <span className="bg-amber-500/10 text-amber-400 text-[9px] sm:text-[10px] font-bold px-2 py-1 sm:px-2.5 sm:py-1 rounded-md border border-amber-500/20 uppercase tracking-widest">
+                                      Investigating
+                                    </span>
+                                  )}
+                                  {alert.status === 'resolved' && (
+                                    <span className="bg-emerald-500/10 text-emerald-400 text-[9px] sm:text-[10px] font-bold px-2 py-1 sm:px-2.5 sm:py-1 rounded-md border border-emerald-500/20 uppercase tracking-widest">
+                                      Resolved
+                                    </span>
+                                  )}
                                   <span className="text-xs sm:text-sm text-neutral-400 flex items-center gap-1.5 font-medium">
                                     <Clock className="w-3.5 h-3.5" />
                                     {formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}
                                   </span>
                                 </div>
                                 {editingAlertId === alert.id ? (
-                                  <div className="flex items-center gap-2 mt-2">
+                                  <div className="flex flex-col gap-2 mt-2 w-full max-w-md">
                                     <input 
                                       type="text" 
                                       value={editingName} 
                                       onChange={(e) => setEditingName(e.target.value)}
                                       className="bg-black/50 border border-[#0f0]/50 text-[#0f0] px-2 py-1 text-sm font-mono focus:outline-none"
-                                      autoFocus
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleRename(alert.id, editingName);
-                                        if (e.key === 'Escape') setEditingAlertId(null);
-                                      }}
+                                      placeholder="Token Name"
                                     />
-                                    <button onClick={() => handleRename(alert.id, editingName)} className="text-[#0f0] hover:text-white px-2 text-xs border border-[#0f0]/30">SAVE</button>
-                                    <button onClick={() => setEditingAlertId(null)} className="text-red-500 hover:text-red-400 px-2 text-xs border border-red-500/30">CANCEL</button>
+                                    <select 
+                                      value={editingStatus}
+                                      onChange={(e) => setEditingStatus(e.target.value as any)}
+                                      className="bg-black/50 border border-[#0f0]/50 text-[#0f0] px-2 py-1 text-sm font-mono focus:outline-none"
+                                    >
+                                      <option value="new">Status: New</option>
+                                      <option value="investigating">Status: Investigating</option>
+                                      <option value="resolved">Status: Resolved</option>
+                                    </select>
+                                    <textarea 
+                                      value={editingNotes}
+                                      onChange={(e) => setEditingNotes(e.target.value)}
+                                      className="bg-black/50 border border-[#0f0]/50 text-[#0f0] px-2 py-1 text-sm font-mono focus:outline-none h-16"
+                                      placeholder="Investigator Notes"
+                                    />
+                                    <div className="flex gap-2">
+                                      <button onClick={() => {
+                                        if (editingName !== alert.token_name) handleRename(alert.id, editingName);
+                                        handleUpdateAlertState(alert.id, editingStatus, editingNotes);
+                                      }} className="text-[#0f0] hover:text-white px-2 text-xs border border-[#0f0]/30 flex-1 py-1">SAVE</button>
+                                      <button onClick={() => setEditingAlertId(null)} className="text-red-500 hover:text-red-400 px-2 text-xs border border-red-500/30 flex-1 py-1">CANCEL</button>
+                                    </div>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center gap-3 mt-2 group/edit">
-                                    <h3 className="text-lg sm:text-xl font-bold text-[#0f0] drop-shadow-sm truncate max-w-[250px] sm:max-w-md cursor-pointer" onClick={() => { setEditingAlertId(alert.id); setEditingName(alert.token_name || ''); }}>
-                                      {alert.token_name || 'Unknown Token'}
-                                    </h3>
-                                    <button 
-                                      onClick={() => { setEditingAlertId(alert.id); setEditingName(alert.token_name || ''); }}
-                                      className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-[#0f0]/50 hover:text-[#0f0]"
-                                      title="Rename Log"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                    </button>
+                                  <div className="flex flex-col mt-2 group/edit">
+                                    <div className="flex items-center gap-3">
+                                      <h3 className="text-lg sm:text-xl font-bold text-[#0f0] drop-shadow-sm truncate max-w-[250px] sm:max-w-md cursor-pointer" onClick={() => { setEditingAlertId(alert.id); setEditingName(alert.token_name || ''); setEditingStatus(alert.status || 'new'); setEditingNotes(alert.notes || ''); }}>
+                                        {alert.token_name || 'Unknown Token'}
+                                      </h3>
+                                      <button 
+                                        onClick={() => { setEditingAlertId(alert.id); setEditingName(alert.token_name || ''); setEditingStatus(alert.status || 'new'); setEditingNotes(alert.notes || ''); }}
+                                        className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-[#0f0]/50 hover:text-[#0f0]"
+                                        title="Edit Log"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                      </button>
+                                    </div>
+                                    {alert.notes && (
+                                      <p className="text-xs text-amber-200 mt-1 italic max-w-lg break-words">Notes: {alert.notes}</p>
+                                    )}
                                   </div>
                                 )}
                                 {alert.threat_id && (

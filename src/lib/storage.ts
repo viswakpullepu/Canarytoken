@@ -34,6 +34,7 @@ export type Token = {
   max_triggers?: number;
   trigger_count?: number;
   is_paused?: boolean;
+  tags?: string[];
 };
 export type Alert = { 
   id: string; 
@@ -44,6 +45,8 @@ export type Alert = {
   triggered_at: string; 
   token_name?: string; 
   memo?: string;
+  status?: 'new' | 'investigating' | 'resolved';
+  notes?: string;
   hardware_concurrency?: number;
   device_memory?: number;
   screen_resolution?: string;
@@ -128,9 +131,9 @@ export async function getAlerts(user_id: string): Promise<Alert[]> {
   }
 }
 
-export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '', payload_type: 'invisible' | 'redirect' | 'fake_login' = 'invisible', max_triggers?: number, expires_at?: string): Promise<Token> {
+export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '', payload_type: 'invisible' | 'redirect' | 'fake_login' = 'invisible', max_triggers?: number, expires_at?: string, tags?: string[]): Promise<Token> {
   const id = crypto.randomUUID();
-  const newToken: Token = { id, user_id, token_name, memo, redirect_url, payload_type, created_at: new Date().toISOString() };
+  const newToken: Token = { id, user_id, token_name, memo, redirect_url, payload_type, created_at: new Date().toISOString(), tags: tags || [] };
   if (max_triggers) newToken.max_triggers = Number(max_triggers);
   if (expires_at) newToken.expires_at = expires_at;
   
@@ -241,7 +244,7 @@ async function sendDiscordWebhook(alert: Alert, user_id: string, isTelemetry: bo
 
 export async function createAlert(token_id: string, attacker_ip: string, user_agent: string, location: string = 'Unknown Location'): Promise<Alert> {
   const id = crypto.randomUUID();
-  const newAlert: Alert = { id, token_id, attacker_ip, user_agent, location, triggered_at: new Date().toISOString() };
+  const newAlert: Alert = { id, token_id, attacker_ip, user_agent, location, triggered_at: new Date().toISOString(), status: 'new' };
   
   const redis = getRedis();
   if (!redis) return newAlert;
