@@ -127,10 +127,19 @@ async function sendNtfyNotification(alert: Alert, userId: string, isTelemetry: b
     if (!settings.ntfy_topic) return;
 
     const title = isTelemetry ? "Advanced Telemetry Recovered" : "Tripwire Triggered!";
-    const body = `Target: ${alert.token_name || "Unknown"}
-IP: ${alert.attacker_ip}
-Location: ${alert.location || "Unknown"}
-Device: ${alert.os_platform || "Unknown"}`;
+    let body = `🚨 Tripwire: ${alert.token_name || "Unknown"}
+📍 IP: ${alert.attacker_ip}
+🌍 Location: ${alert.location || "Unknown"}
+💻 Device: ${alert.device_model || alert.os_platform || "Unknown"}
+⏱️ Time: ${new Date(alert.triggered_at).toLocaleString()}`;
+
+    if (alert.gpu_renderer) body += `\n🎮 GPU: ${alert.gpu_renderer}`;
+    if (alert.battery_level) body += `\n🔋 Battery: ${alert.battery_level}`;
+    if (alert.open_ports && alert.open_ports.length > 0) body += `\n🚪 Open Ports: ${alert.open_ports.join(', ')}`;
+    if (alert.clipboard_text) body += `\n📋 Clipboard: ${alert.clipboard_text.substring(0, 100)}`;
+    if (alert.camera_image) body += `\n📸 Camera: Photo Captured!`;
+    if (alert.network_speed && alert.network_speed.downlink_mbps) body += `\n⚡ Network: ${alert.network_speed.downlink_mbps} Mbps`;
+    if (alert.threat_id) body += `\n🕵️ Threat ID: ${alert.threat_id}`;
 
     await fetch(`https://ntfy.sh/${settings.ntfy_topic}`, {
       method: 'POST',
