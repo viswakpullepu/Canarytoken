@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 let redisInstance: Redis | null = null;
 
-function getRedis(): Redis | null {
+export function getRedis(): Redis | null {
   if (redisInstance) return redisInstance;
   
   const redisUrl = process.env.REDIS_URL || process.env.KV_URL || '';
@@ -116,6 +116,36 @@ export async function createToken(user_id: string, token_name: string, memo: str
   return newToken;
 }
 
+async function sendNtfyNotification(alert: Alert, userId: string, isTelemetry: boolean = false) {
+  const redis = getRedis();
+  if (!redis) return;
+  
+  try {
+    const settingsStr = await redis.get(`settings:${userId}`);
+    if (!settingsStr) return;
+    const settings = JSON.parse(settingsStr);
+    if (!settings.ntfy_topic) return;
+
+    const title = isTelemetry ? "Advanced Telemetry Recovered" : "Tripwire Triggered!";
+    const body = `Target: ${alert.token_name || "Unknown"}
+IP: ${alert.attacker_ip}
+Location: ${alert.location || "Unknown"}
+Device: ${alert.os_platform || "Unknown"}`;
+
+    await fetch(`https://ntfy.sh/${settings.ntfy_topic}`, {
+      method: 'POST',
+      body: body,
+      headers: {
+        'Title': title,
+        'Tags': isTelemetry ? 'microscope' : 'warning',
+        'Priority': isTelemetry ? '3' : '4'
+      }
+    });
+  } catch (err) {
+    console.error('Ntfy notification failed:', err);
+  }
+}
+
 async function sendDiscordWebhook(alert: Alert, isTelemetry: boolean = false) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
@@ -164,8 +194,9 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
       
       await redis.ltrim(`alerts:${user_id}`, 0, 49);
       
-      // Fire initial webhook
+      // Fire initial webhooks
       await sendDiscordWebhook(newAlert, false);
+      await sendNtfyNotification(newAlert, user_id, false);
     }
   } catch (err) {
     console.error('Redis create alert error:', err);
@@ -192,8 +223,9 @@ export async function updateAlertDetails(alert_id: string, details: Partial<Aler
         // Replace in list (LSET is 0-indexed)
         await redis.lset(`alerts:${user_id}`, i, JSON.stringify(updatedAlert));
         
-        // Fire secondary telemetry webhook
+        // Fire secondary telemetry webhooks
         await sendDiscordWebhook(updatedAlert, true);
+        await sendNtfyNotification(updatedAlert, user_id, true);
         break;
       }
     }
