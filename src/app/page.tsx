@@ -26,6 +26,8 @@ export default function CanaryDashboard() {
   const [editingName, setEditingName] = useState('');
   const [ntfyTopic, setNtfyTopic] = useState('');
   const [ntfySaved, setNtfySaved] = useState(false);
+  const [discordWebhook, setDiscordWebhook] = useState('');
+  const [discordSaved, setDiscordSaved] = useState(false);
 
   useEffect(() => {
     const savedUserId = localStorage.getItem('canary_user_id');
@@ -52,6 +54,7 @@ export default function CanaryDashboard() {
       const res = await fetch('/api/admin/settings', { headers: { 'x-user-id': userId || '' } });
       const data = await res.json();
       if (data.ntfy_topic) setNtfyTopic(data.ntfy_topic);
+      if (data.discord_webhook) setDiscordWebhook(data.discord_webhook);
     } catch(e) {}
   };
 
@@ -65,6 +68,19 @@ export default function CanaryDashboard() {
       });
       setNtfySaved(true);
       setTimeout(() => setNtfySaved(false), 2000);
+    } catch(e) {}
+  };
+
+  const saveDiscordWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId || '' },
+        body: JSON.stringify({ discord_webhook: discordWebhook.trim() })
+      });
+      setDiscordSaved(true);
+      setTimeout(() => setDiscordSaved(false), 2000);
     } catch(e) {}
   };
 
@@ -567,6 +583,37 @@ export default function CanaryDashboard() {
                     className="w-full relative overflow-hidden bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 font-semibold py-3 px-4 rounded-xl transition-colors duration-300 shadow-sm"
                   >
                     {ntfySaved ? 'Topic Saved!' : 'Save Push Settings'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Discord Webhook Settings */}
+              <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden group transition-colors duration-500 mt-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                  <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  Discord Webhook
+                </h2>
+                <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
+                  Get rich, formatted alerts directly in your private Discord server. Create a webhook in your server settings and paste the URL here.
+                </p>
+                <form onSubmit={saveDiscordWebhook} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Webhook URL</label>
+                    <input
+                      type="url"
+                      value={discordWebhook}
+                      onChange={(e) => setDiscordWebhook(e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full relative overflow-hidden bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 font-semibold py-3 px-4 rounded-xl transition-colors duration-300 shadow-sm"
+                  >
+                    {discordSaved ? 'Webhook Saved!' : 'Save Discord Webhook'}
                   </button>
                 </form>
               </div>
