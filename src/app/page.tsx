@@ -7,15 +7,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ThreatMap from './components/ThreatMap';
 import { Token, Alert } from '@/lib/storage';
 
+import { signIn, signOut, useSession } from 'next-auth/react';
+
 export const dynamic = 'force-dynamic';
 
 export default function CanaryDashboard() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const userId = (session?.user as any)?.id || null;
   const [tempUsername, setTempUsername] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
   const [tokenName, setTokenName] = useState('');
   const [tokenMemo, setTokenMemo] = useState('');
   const [redirectUrl, setRedirectUrl] = useState('');
   const [payloadType, setPayloadType] = useState<'invisible' | 'redirect' | 'fake_login'>('invisible');
+  const [maxTriggers, setMaxTriggers] = useState<string>('');
+  const [expiresInDays, setExpiresInDays] = useState<string>('');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -26,12 +32,7 @@ export default function CanaryDashboard() {
   const [editingName, setEditingName] = useState('');
 
 
-  useEffect(() => {
-    const savedUserId = localStorage.getItem('canary_user_id');
-    if (savedUserId) {
-      setUserId(savedUserId);
-    }
-  }, []);
+
 
   useEffect(() => {
     if (!userId) return;
@@ -45,12 +46,16 @@ export default function CanaryDashboard() {
     return () => clearInterval(interval);
   }, [userId]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tempUsername.trim()) return;
-    const newUserId = tempUsername.trim().toLowerCase() + '-' + Math.random().toString(36).substring(7);
-    localStorage.setItem('canary_user_id', newUserId);
-    setUserId(newUserId);
+    if (!tempUsername.trim() || !tempPassword.trim()) return;
+    setLoading(true);
+    await signIn('credentials', {
+      username: tempUsername,
+      password: tempPassword,
+      redirect: false
+    });
+    setLoading(false);
   };
 
   const fetchAlerts = async () => {
@@ -68,24 +73,10 @@ export default function CanaryDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('canary_user_id');
-    setUserId(null);
+    signOut({ redirect: false });
     setAlerts([]);
   };
 
-  const fetchAlerts = async () => {
-    if (!userId) return;
-    try {
-      const res = await fetch('/api/admin', {
-        headers: { 'x-user-id': userId }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAlerts(data);
-    } catch (err) {
-      console.error('Error fetching alerts:', err);
-    }
-  };
 
   const handleRename = async (alertId: string, newName: string) => {
     if (!newName.trim()) return;
@@ -117,7 +108,14 @@ export default function CanaryDashboard() {
           'Content-Type': 'application/json',
           'x-user-id': userId
         },
-        body: JSON.stringify({ token_name: tokenName, memo: tokenMemo, redirect_url: redirectUrl, payload_type: payloadType }),
+        body: JSON.stringify({ 
+          token_name: tokenName, 
+          memo: tokenMemo, 
+          redirect_url: redirectUrl, 
+          payload_type: payloadType,
+          max_triggers: maxTriggers ? parseInt(maxTriggers) : undefined,
+          expires_at: expiresInDays ? new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString() : undefined
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -127,6 +125,8 @@ export default function CanaryDashboard() {
       setTokenName('');
       setTokenMemo('');
       setRedirectUrl('');
+      setMaxTriggers('');
+      setExpiresInDays('');
     } catch (err) {
       console.error('Error generating token:', err);
       alert('Failed to generate token.');
@@ -264,6 +264,52 @@ export default function CanaryDashboard() {
     }
   };
 
+  const downloadPdf = async () => {
+    if (!generatedUrl) return;
+    try {
+      const tokenId = generatedUrl.split('/').pop();
+      const res = await fetch('/api/v1/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'confidential' })
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${tokenName || 'confidential'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch(e) {
+      console.error(e);
+      alert("Failed to generate PDF");
+    }
+  };
+
+  const downloadSql = async () => {
+    if (!generatedUrl) return;
+    try {
+      const tokenId = generatedUrl.split('/').pop();
+      const res = await fetch('/api/v1/generate-sql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'production_backup' })
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${tokenName || 'production_backup'}.sql`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch(e) {
+      console.error(e);
+      alert("Failed to generate SQL");
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -276,6 +322,10 @@ export default function CanaryDashboard() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100, damping: 15 } }
   };
+
+  if (status === 'loading') {
+    return <div className="min-h-screen bg-black flex items-center justify-center text-cyan-500 font-mono">Initializing System...</div>;
+  }
 
   if (!userId) {
     return (
@@ -300,7 +350,15 @@ export default function CanaryDashboard() {
                 required
                 value={tempUsername}
                 onChange={(e) => setTempUsername(e.target.value)}
-                placeholder="Enter a username..."
+                placeholder="Username"
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-white transition-all shadow-inner group-hover:border-white/20 mb-4"
+              />
+              <input
+                type="password"
+                required
+                value={tempPassword}
+                onChange={(e) => setTempPassword(e.target.value)}
+                placeholder="Password"
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-white transition-all shadow-inner group-hover:border-white/20"
               />
               <div className="absolute inset-0 border border-cyan-500/0 rounded-xl pointer-events-none group-focus-within:border-cyan-500/50 transition-colors duration-300"></div>
@@ -464,6 +522,31 @@ export default function CanaryDashboard() {
                       />
                     </div>
                   )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Max Triggers</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={maxTriggers}
+                        onChange={(e) => setMaxTriggers(e.target.value)}
+                        placeholder="Unlimited"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider ml-1">Days to Live</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={expiresInDays}
+                        onChange={(e) => setExpiresInDays(e.target.value)}
+                        placeholder="Never expire"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm placeholder:text-neutral-600 transition-all shadow-inner text-white"
+                      />
+                    </div>
+                  </div>
                   
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -516,13 +599,17 @@ export default function CanaryDashboard() {
                             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
-                        <button
-                          onClick={downloadDocx}
-                          className="w-full mt-3 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                          Download as Decoy Word Document (.docx)
-                        </button>
+                        <div className="grid grid-cols-3 gap-2 mt-4">
+                          <button onClick={downloadDocx} className="flex-1 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                            <span className="font-bold">.DOCX</span> Decoy
+                          </button>
+                          <button onClick={downloadPdf} className="flex-1 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                            <span className="font-bold">.PDF</span> Decoy
+                          </button>
+                          <button onClick={downloadSql} className="flex-1 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                            <span className="font-bold">.SQL</span> Dump
+                          </button>
+                        </div>
                         <p className="text-[10px] sm:text-[11px] text-cyan-500/60 mt-3 font-medium text-center">Embed this invisible tripwire in your documents, emails, or servers.</p>
                       </div>
                     </motion.div>

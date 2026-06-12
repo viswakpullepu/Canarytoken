@@ -1,5 +1,6 @@
 import './globals.css';
 import { Share_Tech_Mono } from 'next/font/google';
+import { Providers } from './providers';
 
 const hackerFont = Share_Tech_Mono({ subsets: ['latin'], weight: '400' });
 
@@ -19,7 +20,7 @@ export default function RootLayout({
         <div className="scanlines"></div>
         <div className="matrix-bg"></div>
         <div className="relative z-10 min-h-screen">
-          {children}
+          <Providers>{children}</Providers>
         </div>
       </body>
     </html>

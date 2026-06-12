@@ -22,7 +22,19 @@ export function getRedis(): Redis | null {
   }
 }
 
-export type Token = { id: string; user_id: string; token_name: string; memo: string; redirect_url: string; payload_type?: 'invisible' | 'redirect' | 'fake_login'; created_at: string };
+export type Token = { 
+  id: string; 
+  user_id: string; 
+  token_name: string; 
+  memo: string; 
+  redirect_url: string; 
+  payload_type?: 'invisible' | 'redirect' | 'fake_login'; 
+  created_at: string;
+  expires_at?: string;
+  max_triggers?: number;
+  trigger_count?: number;
+  is_paused?: boolean;
+};
 export type Alert = { 
   id: string; 
   token_id: string; 
@@ -85,6 +97,24 @@ export async function getToken(id: string): Promise<Token | null> {
   }
 }
 
+export async function getTokens(user_id: string): Promise<Token[]> {
+  const redis = getRedis();
+  if (!redis) return [];
+  
+  try {
+    const tokenIds = await redis.smembers(`user_tokens:${user_id}`);
+    const tokens: Token[] = [];
+    for (const id of tokenIds) {
+      const data = await redis.get(`token:${id}`);
+      if (data) tokens.push(JSON.parse(data));
+    }
+    return tokens.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  } catch (err) {
+    console.error('Redis get tokens error:', err);
+    return [];
+  }
+}
+
 export async function getAlerts(user_id: string): Promise<Alert[]> {
   const redis = getRedis();
   if (!redis) return [];
@@ -98,9 +128,11 @@ export async function getAlerts(user_id: string): Promise<Alert[]> {
   }
 }
 
-export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '', payload_type: 'invisible' | 'redirect' | 'fake_login' = 'invisible'): Promise<Token> {
+export async function createToken(user_id: string, token_name: string, memo: string, redirect_url: string = '', payload_type: 'invisible' | 'redirect' | 'fake_login' = 'invisible', max_triggers?: number, expires_at?: string): Promise<Token> {
   const id = crypto.randomUUID();
   const newToken: Token = { id, user_id, token_name, memo, redirect_url, payload_type, created_at: new Date().toISOString() };
+  if (max_triggers) newToken.max_triggers = Number(max_triggers);
+  if (expires_at) newToken.expires_at = expires_at;
   
   const redis = getRedis();
   if (!redis) return newToken; 
@@ -108,6 +140,7 @@ export async function createToken(user_id: string, token_name: string, memo: str
   try {
     await redis.set(`token:${id}`, JSON.stringify(newToken));
     await redis.set(`token_lookup:${id}`, user_id);
+    await redis.sadd(`user_tokens:${user_id}`, id);
     await redis.lpush(`tokens:${user_id}`, JSON.stringify(newToken));
   } catch (err) {
     console.error('Redis create token error:', err);
@@ -214,9 +247,28 @@ export async function createAlert(token_id: string, attacker_ip: string, user_ag
   if (!redis) return newAlert;
   
   try {
+    // RATE LIMITING Check
+    const rateLimitKey = `rate_limit:${attacker_ip}`;
+    const hits = await redis.incr(rateLimitKey);
+    if (hits === 1) await redis.expire(rateLimitKey, 60);
+    if (hits > 10) {
+      console.warn(`Rate limit exceeded for IP ${attacker_ip}`);
+      return newAlert; // Ignore silently
+    }
+
     const tokenStr = await redis.get(`token:${token_id}`);
     if (tokenStr) {
       const token: Token = JSON.parse(tokenStr);
+      
+      // Token Lifecycle Checks
+      if (token.is_paused) return newAlert;
+      if (token.expires_at && new Date() > new Date(token.expires_at)) return newAlert;
+      if (token.max_triggers !== undefined && (token.trigger_count || 0) >= token.max_triggers) return newAlert;
+
+      // Update Trigger Count
+      token.trigger_count = (token.trigger_count || 0) + 1;
+      await redis.set(`token:${token_id}`, JSON.stringify(token));
+
       const user_id = token.user_id;
       newAlert.token_name = token.token_name;
       newAlert.memo = token.memo;

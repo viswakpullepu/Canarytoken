@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { token_name, memo, redirect_url, payload_type } = body;
+    const { token_name, memo, redirect_url, payload_type, max_triggers, expires_at } = body;
 
-    const newToken = await createToken(userId, token_name, memo, redirect_url, payload_type || 'invisible');
+    const newToken = await createToken(userId, token_name, memo, redirect_url, payload_type || 'invisible', max_triggers, expires_at);
     return NextResponse.json(newToken);
   } catch (err) {
     console.error(err);
