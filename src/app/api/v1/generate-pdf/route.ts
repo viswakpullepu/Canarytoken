@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { getToken } from '@/lib/storage';
 
 export async function POST(request: NextRequest) {
   try {
     const { token_id, host, token_name } = await request.json();
     if (!token_id || !host) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
+
+    const token = await getToken(token_id);
+    const resolvedTokenName = token_name || token?.token_name || 'confidential';
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([600, 400]);
@@ -81,7 +85,7 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${token_name || 'confidential'}.pdf"`,
+        'Content-Disposition': `attachment; filename="${resolvedTokenName}.pdf"`,
       },
     });
   } catch (err) {

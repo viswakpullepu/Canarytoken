@@ -5,8 +5,19 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { alert_id, details } = body;
+    const text = await request.text();
+    if (!text) {
+      return NextResponse.json({ error: 'Empty body' }, { status: 400 });
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(text);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const { alert_id, details } = body || {};
 
     if (!alert_id || !details) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

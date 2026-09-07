@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from '@/lib/storage';
 
 export async function POST(request: NextRequest) {
   try {
     const { token_id, host, token_name } = await request.json();
     if (!token_id || !host) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
 
+    const token = await getToken(token_id);
+    const resolvedTokenName = token_name || token?.token_name || 'production_backup';
+
     const canaryUrl = `${host}/file/${token_id}`;
-    
-    // Generate a decoy SQL dump file
-    // By embedding an IMG tag in a vulnerable field, we can trigger the canary
-    // if the database dump is imported and viewed in a vulnerable web-based admin panel (like old phpMyAdmin).
-    // Or we simply put the link there to tempt them to visit it.
+
     const sqlContent = `
 -- MySQL dump 10.13  Distrib 8.0.30, for Linux (x86_64)
 -- Host: localhost    Database: production_main
@@ -62,7 +62,7 @@ UNLOCK TABLES;
       status: 200,
       headers: {
         'Content-Type': 'application/sql',
-        'Content-Disposition': `attachment; filename="${token_name || 'production_backup'}.sql"`,
+        'Content-Disposition': `attachment; filename="${resolvedTokenName}.sql"`,
       },
     });
   } catch (err) {

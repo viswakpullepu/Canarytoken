@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Document, Packer, Paragraph, TextRun, ExternalHyperlink } from 'docx';
+import { getToken } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +8,9 @@ export async function POST(request: NextRequest) {
   try {
     const { token_id, host, token_name } = await request.json();
     if (!token_id || !host) return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+
+    const token = await getToken(token_id);
+    const resolvedTokenName = token_name || token?.token_name || 'confidential';
 
     const trackingUrl = `${host}/file/${token_id}`;
 
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
     return new Response(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${token_name || 'confidential'}.docx"`,
+        'Content-Disposition': `attachment; filename="${resolvedTokenName}.docx"`,
       },
     });
   } catch (error) {

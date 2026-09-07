@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from '@/lib/storage';
 
 export async function POST(request: NextRequest) {
   try {
     const { token_id, host, token_name } = await request.json();
     if (!token_id || !host) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
+
+    const token = await getToken(token_id);
+    const resolvedTokenName = token_name || token?.token_name || 'kubeconfig';
 
     const canaryUrl = `${host}/file/${token_id}`;
     
@@ -30,7 +34,7 @@ users:
       status: 200,
       headers: {
         'Content-Type': 'application/x-yaml',
-        'Content-Disposition': `attachment; filename="${token_name || 'kubeconfig'}.yaml"`,
+        'Content-Disposition': `attachment; filename="${resolvedTokenName}.yaml"`,
       },
     });
   } catch (err) {
