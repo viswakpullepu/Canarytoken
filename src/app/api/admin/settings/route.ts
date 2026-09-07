@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRedis } from '@/lib/storage';
+import { getSettings, setSettings } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,12 +7,9 @@ export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const redis = getRedis();
-    if (!redis) return NextResponse.json({ error: 'Redis disabled' }, { status: 500 });
-    
-    const settingsStr = await redis.get(`settings:${userId}`);
-    return NextResponse.json(settingsStr ? JSON.parse(settingsStr) : {});
+
+    const settings = await getSettings(userId);
+    return NextResponse.json(settings);
   } catch (e) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
@@ -22,19 +19,11 @@ export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
+
     const body = await request.json();
-    const redis = getRedis();
-    if (!redis) return NextResponse.json({ error: 'Redis disabled' }, { status: 500 });
-    
-    // Merge existing settings
-    const existingStr = await redis.get(`settings:${userId}`);
-    const existing = existingStr ? JSON.parse(existingStr) : {};
-    
-    const newSettings = { ...existing, ...body };
-    await redis.set(`settings:${userId}`, JSON.stringify(newSettings));
-    
-    return NextResponse.json({ success: true, settings: newSettings });
+    const updated = await setSettings(userId, body);
+
+    return NextResponse.json({ success: true, settings: updated });
   } catch (e) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
