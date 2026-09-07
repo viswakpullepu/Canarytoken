@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldAlert, Plus, Copy, Check, Activity, Clock, Globe, Fingerprint, Zap, Radar, MapPin, Bot, Shield } from 'lucide-react';
+import { ShieldAlert, Plus, Copy, Check, Activity, Clock, Globe, Fingerprint, Zap, Radar, MapPin, Bot, Shield, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThreatMap from './components/ThreatMap';
@@ -37,9 +37,7 @@ export default function CanaryDashboard() {
   const [editingStatus, setEditingStatus] = useState<'new'|'investigating'|'resolved'>('new');
   const [showSettings, setShowSettings] = useState(false);
   const [discordWebhook, setDiscordWebhook] = useState('');
-
-
-
+  const [appBaseUrl, setAppBaseUrl] = useState('');
 
   useEffect(() => {
     if (!userId) return;
@@ -59,6 +57,7 @@ export default function CanaryDashboard() {
       const res = await fetch('/api/admin/settings', { headers: { 'x-user-id': userId } });
       const data = await res.json();
       if (data.discord_webhook) setDiscordWebhook(data.discord_webhook);
+      if (data.app_base_url) setAppBaseUrl(data.app_base_url);
     } catch(e) {}
   };
 
@@ -67,7 +66,7 @@ export default function CanaryDashboard() {
       await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-        body: JSON.stringify({ discord_webhook: discordWebhook })
+        body: JSON.stringify({ discord_webhook: discordWebhook, app_base_url: appBaseUrl })
       });
       setShowSettings(false);
     } catch(e) {}
@@ -108,7 +107,6 @@ export default function CanaryDashboard() {
     signOut({ redirect: false });
     setAlerts([]);
   };
-
 
   const handleRename = async (alertId: string, newName: string) => {
     if (!newName.trim()) return;
@@ -153,7 +151,8 @@ export default function CanaryDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      const url = `${window.location.origin}/file/${data.id}`;
+      const origin = appBaseUrl.trim() ? appBaseUrl.trim().replace(/\/$/, '') : window.location.origin;
+      const url = `${origin}/file/${data.id}`;
       setGeneratedUrl(url);
       setTokenName('');
       setTokenMemo('');
@@ -279,10 +278,11 @@ export default function CanaryDashboard() {
     if (!generatedUrl) return;
     try {
       const tokenId = generatedUrl.split('/').pop();
+      const host = appBaseUrl.trim() ? appBaseUrl.trim().replace(/\/$/, '') : window.location.origin;
       const res = await fetch('/api/v1/generate-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'confidential' })
+        body: JSON.stringify({ token_id: tokenId, host, token_name: tokenName || 'confidential' })
       });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -302,10 +302,11 @@ export default function CanaryDashboard() {
     if (!generatedUrl) return;
     try {
       const tokenId = generatedUrl.split('/').pop();
+      const host = appBaseUrl.trim() ? appBaseUrl.trim().replace(/\/$/, '') : window.location.origin;
       const res = await fetch('/api/v1/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'confidential' })
+        body: JSON.stringify({ token_id: tokenId, host, token_name: tokenName || 'confidential' })
       });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -325,10 +326,11 @@ export default function CanaryDashboard() {
     if (!generatedUrl) return;
     try {
       const tokenId = generatedUrl.split('/').pop();
+      const host = appBaseUrl.trim() ? appBaseUrl.trim().replace(/\/$/, '') : window.location.origin;
       const res = await fetch('/api/v1/generate-sql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'production_backup' })
+        body: JSON.stringify({ token_id: tokenId, host, token_name: tokenName || 'production_backup' })
       });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -348,10 +350,11 @@ export default function CanaryDashboard() {
     if (!generatedUrl) return;
     try {
       const tokenId = generatedUrl.split('/').pop();
+      const host = appBaseUrl.trim() ? appBaseUrl.trim().replace(/\/$/, '') : window.location.origin;
       const res = await fetch('/api/v1/generate-aws', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: tokenId, host: window.location.origin })
+        body: JSON.stringify({ token_id: tokenId, host })
       });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -371,10 +374,11 @@ export default function CanaryDashboard() {
     if (!generatedUrl) return;
     try {
       const tokenId = generatedUrl.split('/').pop();
+      const host = appBaseUrl.trim() ? appBaseUrl.trim().replace(/\/$/, '') : window.location.origin;
       const res = await fetch('/api/v1/generate-kubeconfig', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: tokenId, host: window.location.origin, token_name: tokenName || 'kubeconfig' })
+        body: JSON.stringify({ token_id: tokenId, host, token_name: tokenName || 'kubeconfig' })
       });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -388,19 +392,6 @@ export default function CanaryDashboard() {
       console.error(e);
       alert("Failed to generate Kubeconfig Decoy");
     }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100, damping: 15 } }
   };
 
   if (status === 'loading') {
@@ -474,14 +465,6 @@ export default function CanaryDashboard() {
 
   const filteredAlertsByBot = hideBots ? alerts.filter(a => !isBot(a.user_agent)) : alerts;
   
-  // Extract all unique tags
-  const allTags = Array.from(new Set(alerts.flatMap(a => {
-    // If we have token tags attached to the token via lookup (not currently synced in UI but you could)
-    // For now, let's use the UI tags if they were returned. Note: Alert type doesn't have token tags directly,
-    // so we'd need to fetch tokens to map them, OR we just use a generic search. Let's do generic text search filter.
-    return [] as string[];
-  })));
-
   const filteredAlerts = activeTagFilter ? filteredAlertsByBot.filter(a => a.token_name?.toLowerCase().includes(activeTagFilter.toLowerCase()) || a.memo?.toLowerCase().includes(activeTagFilter.toLowerCase())) : filteredAlertsByBot;
 
   const handleUpdateAlertState = async (alertId: string, status?: 'new'|'investigating'|'resolved', notes?: string) => {
@@ -499,6 +482,8 @@ export default function CanaryDashboard() {
       console.error(e);
     }
   };
+
+  const isLocalhostUrl = generatedUrl.includes('localhost') || generatedUrl.includes('127.0.0.1');
 
   return (
     <div className="min-h-screen bg-transparent text-[#0f0] font-mono selection:bg-green-500/30 overflow-hidden relative">
@@ -520,6 +505,17 @@ export default function CanaryDashboard() {
               <h3 className="text-xl font-bold text-[#0f0] mb-4 uppercase tracking-widest">System Settings</h3>
               
               <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Public App Base URL / Domain</label>
+                  <input
+                    type="text"
+                    value={appBaseUrl}
+                    onChange={(e) => setAppBaseUrl(e.target.value)}
+                    placeholder="e.g. http://192.168.1.50:3000 or https://canary.example.com"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#0f0]/50 text-sm text-white"
+                  />
+                  <p className="text-[10px] text-neutral-500 mt-1">Set your server's LAN IP address or domain so generated payload links work when opened from other devices.</p>
+                </div>
                 <div>
                   <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Discord Webhook URL</label>
                   <input
@@ -596,7 +592,7 @@ export default function CanaryDashboard() {
                   <span className="hidden sm:inline">Monitoring </span><span className="text-white font-bold">{alerts.length}</span> <span className="sm:hidden">Alerts</span><span className="hidden sm:inline">Triggers</span>
                 </span>
               </motion.div>
-              <button onClick={() => setShowSettings(true)} className="text-neutral-400 hover:text-white transition-colors">
+              <button onClick={() => setShowSettings(true)} className="text-neutral-400 hover:text-white transition-colors" title="Settings">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </button>
               <button onClick={handleLogout} className="text-sm text-neutral-500 hover:text-white transition-colors">Logout</button>
@@ -758,6 +754,16 @@ export default function CanaryDashboard() {
                             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
+
+                        {isLocalhostUrl && (
+                          <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2 text-[11px] text-amber-300">
+                            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                            <span>
+                              <strong>Cross-Device Note:</strong> Using <code className="bg-black/40 px-1 rounded">localhost</code>. To open this link from other devices on your network, set your LAN IP (e.g. <code className="bg-black/40 px-1 rounded">http://192.168.x.x:3000</code>) in <strong>Settings</strong> top right!
+                            </span>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
                           <button onClick={downloadDocx} className="flex-1 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 font-medium py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
                             <span className="font-bold">.DOCX</span> Decoy

@@ -3,31 +3,56 @@ import { updateAlertDetails } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const text = await request.text();
     if (!text) {
-      return NextResponse.json({ error: 'Empty body' }, { status: 400 });
+      return NextResponse.json({ error: 'Empty body' }, {
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
 
     let body: any;
     try {
       body = JSON.parse(text);
     } catch (e) {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid JSON' }, {
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
 
     const { alert_id, details } = body || {};
 
     if (!alert_id || !details) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields' }, {
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
 
     await updateAlertDetails(alert_id, details);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, {
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   } catch (err) {
     console.error('Failed to update alert details:', err);
-    return NextResponse.json({ error: 'Failed to update alert details' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update alert details' }, {
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }

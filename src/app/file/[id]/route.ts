@@ -8,6 +8,17 @@ const transparentPixel = Buffer.from(
 
 export const dynamic = 'force-dynamic';
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+    },
+  });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -73,6 +84,11 @@ export async function GET(
   }
 
   const payloadType = token?.payload_type || 'invisible';
+
+  const commonHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+  };
 
   if (isHtmlRequest) {
     if (payloadType === 'fake_login') {
@@ -224,7 +240,7 @@ export async function GET(
       </html>
       `;
       return new Response(loginHtml, { 
-        headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+        headers: { 'Content-Type': 'text/html', ...commonHeaders }
       });
     }
 
@@ -365,10 +381,7 @@ export async function GET(
     `;
     
     return new Response(html, { 
-      headers: { 
-        'Content-Type': 'text/html',
-        'Cache-Control': 'no-store, no-cache, must-revalidate'
-      }
+      headers: { 'Content-Type': 'text/html', ...commonHeaders }
     });
   }
 
@@ -385,6 +398,7 @@ export async function GET(
     status: 200,
     headers: {
       'Content-Type': 'image/gif',
+      'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
