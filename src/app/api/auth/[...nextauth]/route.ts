@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
-import { getRedis } from "@/lib/storage";
+import { getUserPasswordHash, setUserPasswordHash } from "@/lib/storage";
 
 const handler = NextAuth({
   providers: [
@@ -15,23 +15,17 @@ const handler = NextAuth({
         if (!credentials?.username || !credentials?.password) {
           throw new Error("Missing username or password");
         }
-        
-        const redis = getRedis();
-        if (!redis) throw new Error("Database offline");
 
         const username = credentials.username.toLowerCase().trim();
-        const userStr = await redis.get(`auth:user:${username}`);
-        
-        if (userStr) {
-          // User exists, check password
-          const user = JSON.parse(userStr);
-          const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        const existingHash = await getUserPasswordHash(username);
+
+        if (existingHash) {
+          const isValid = await bcrypt.compare(credentials.password, existingHash);
           if (!isValid) throw new Error("Invalid password");
           return { id: username, name: username };
         } else {
-          // Create new user if not exists
           const passwordHash = await bcrypt.hash(credentials.password, 10);
-          await redis.set(`auth:user:${username}`, JSON.stringify({ passwordHash, created_at: new Date().toISOString() }));
+          await setUserPasswordHash(username, passwordHash);
           return { id: username, name: username };
         }
       }
