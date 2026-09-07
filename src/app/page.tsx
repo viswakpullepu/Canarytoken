@@ -77,12 +77,17 @@ export default function CanaryDashboard() {
     e.preventDefault();
     if (!tempUsername.trim() || !tempPassword.trim()) return;
     setLoading(true);
-    await signIn('credentials', {
+    const res = await signIn('credentials', {
       username: tempUsername,
       password: tempPassword,
       redirect: false
     });
     setLoading(false);
+    if (res?.ok) {
+      window.location.reload();
+    } else if (res?.error) {
+      alert(res.error || 'Login failed');
+    }
   };
 
   const fetchAlerts = async () => {
